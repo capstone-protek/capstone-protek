@@ -91,7 +91,7 @@ capstone-protek/
     └── src/
         ├── main.py
         └── predict.py
-
+```
 
 
 🚀 Cara Menjalankan Proyek
