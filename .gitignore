@@ -1,0 +1,19 @@
+# OS & IDE
+.DS_Store
+.vscode/
+*.env
+*.env.local
+
+# Dependensi
+node_modules/
+.venv/
+
+# Dataset & Model (JANGAN PERNAH COMMIT INI)
+/dataset/
+*.csv
+*.pkl
+*.h5
+
+# Log & Build
+npm-debug.log*
+/dist/

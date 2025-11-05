@@ -1,0 +1,4 @@
+#    fastapi
+#    uvicorn[standard]
+#    scikit-learn
+#    pandas
