@@ -67,30 +67,31 @@ import '../backend/src/services'
 import '../ml-api/src/predict'
 
 #### Struktur Repository
+#### 📁 Struktur Repository
 capstone-protek/
+├─ .gitignore
+├─ README.md
+├─ docker-compose.yml # Menjalankan semua layanan secara bersamaan
 │
-├── .gitignore
-├── README.md
-├── docker-compose.yml        # Menjalankan semua layanan secara bersamaan
+├─ backend/ # Tim Backend (Express.js)
+│ ├─ Dockerfile
+│ ├─ package.json
+│ └─ src/
+│ └─ types/index.ts # Definisi tipe data utama (API Contract)
 │
-├── backend/                  # Tim Backend (Express.js)
-│   ├── Dockerfile
-│   ├── package.json
-│   └── src/
-│       └── types/index.ts    # Definisi tipe data utama (API Contract)
+├─ frontend/ # Tim Frontend (React + Vite)
+│ ├─ Dockerfile
+│ ├─ package.json
+│ └─ src/
+│ └─ types/index.ts # Salinan dari kontrak tipe data backend
 │
-├── frontend/                 # Tim Frontend (React + Vite)
-│   ├── Dockerfile
-│   ├── package.json
-│   └── src/
-│       └── types/index.ts    # Salinan dari kontrak tipe data backend
-│
-└── ml-api/                   # Tim Machine Learning (FastAPI)
-    ├── Dockerfile
-    ├── requirements.txt
-    └── src/
-        ├── main.py
-        └── predict.py
+└─ ml-api/ # Tim Machine Learning (FastAPI)
+├─ Dockerfile
+├─ requirements.txt
+└─ src/
+├─ main.py
+└─ predict.py
+---
 
 
 🚀 Cara Menjalankan Proyek
