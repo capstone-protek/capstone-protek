@@ -39,9 +39,27 @@ git checkout -b fix/FE-tampilan-dashboard
 git checkout -b feat/ML-endpoint-predict
 git push origin feat/BE-logika-prioritas-alert
 
-Pull Request (PR):
 
-Setiap perubahan (PR) dari branch ke main harus direview oleh minimal satu anggota tim lain sebelum boleh digabung ke branch utama.
+Semua pekerjaan **HARUS** mengikuti alur kerja *Pull Request (PR)*.
+1.  **Selalu Ambil Update:** Sebelum mulai mengerjakan sesuatu, pastikan cabang `main` sudah diperbarui.
+    ```bash
+    git checkout main
+    git pull origin main
+    ```
+2.  **Buat Cabang Baru:** Setiap task (fitur, bugfix, atau perubahan) harus dikerjakan di branch baru.
+    ```bash
+    # Gunakan format: <tipe>/<tim>-<deskripsi-singkat>
+    git checkout -b feat/BE-logika-prioritas-alert
+    git checkout -b fix/FE-tampilan-dashboard
+    git checkout -b feat/ML-endpoint-predict
+    ```
+3.  **Kerjakan & Push Branch yang sudah dibuat:** Setelah commit selesai, dorong branch ke remote.
+    ```bash
+    git push origin feat/BE-logika-prioritas-alert
+    ```
+4.  **Buka Pull Request (PR):** Di GitHub, buat PR dari branch yang telah dikerjakan (feat/BE-logika-prioritas-alert) untuk digabung ke main.
+5.  **Review & Merge:** Setiap perubahan (PR) dari branch ke main harus direview oleh minimal satu anggota tim lain sebelum boleh digabung ke branch utama.
+
 
 1. Kesepakatan API & Tipe Data (API Contract)
 
@@ -116,28 +134,28 @@ ML-API: http://localhost:8000
 Jalankan layanan secara terpisah di tiga terminal berbeda:
 
 Terminal 1 – Backend
-
+```bash
 cd backend
 npm install
 npm run dev
-
+```
 
 Terminal 2 – Frontend
-
+```bash
 cd frontend
 npm install
 npm run dev
-
+```
 
 Terminal 3 – ML API
-
+```bash
 cd ml-api
 # (Opsional: gunakan virtual environment)
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn src.main:app --reload --port 8000
-
+```
 
 👥 Anggota Tim
 | Nama                    | Peran                      | Learning Path    |
