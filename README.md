@@ -41,9 +41,7 @@ git push origin feat/BE-logika-prioritas-alert
 
 Pull Request (PR):
 
-PR dibuat dari cabang Anda menuju main.
-
-Minimal satu anggota tim untuk melakukan review sebelum merge.
+Setiap perubahan (PR) dari branch ke main harus direview oleh minimal satu anggota tim lain sebelum boleh digabung ke branch utama.
 
 1. Kesepakatan API & Tipe Data (API Contract)
 
