@@ -28,18 +28,6 @@ Berikut beberapa aturan penting agar workflow tim tetap rapi dan sinkron.
 Semua pekerjaan dilakukan melalui **Pull Request (PR)** agar dapat direview dan diuji sebelum digabung ke `main`.
 
 #### Langkah-langkah kerja Git:
-
-1. **Ambil update terbaru dari `main`:**
-   ```bash
-   git checkout main
-   git pull origin main
-# Format: <tipe>/<tim>-<deskripsi-singkat>
-git checkout -b feat/BE-logika-prioritas-alert
-git checkout -b fix/FE-tampilan-dashboard
-git checkout -b feat/ML-endpoint-predict
-git push origin feat/BE-logika-prioritas-alert
-
-
 Semua pekerjaan **HARUS** mengikuti alur kerja *Pull Request (PR)*.
 1.  **Selalu Ambil Update:** Sebelum mulai mengerjakan sesuatu, pastikan cabang `main` sudah diperbarui.
     ```bash
