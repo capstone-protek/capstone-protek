@@ -1,30 +1,29 @@
 {
-  // Visit https://aka.ms/tsconfig to read more about this file
   "compilerOptions": {
-    // File Layout
-    // "rootDir": "./src",
-    // "outDir": "./dist",
+    // === File Layout ===
+    "rootDir": "./src",             // Folder tempat file .ts kamu berada
+    "outDir": "./dist",             // Folder hasil compile .js
 
-    // Environment Settings
-    // See also https://aka.ms/tsconfig/module
-    "module": "nodenext",
-    "target": "esnext",
-    "types": [],
-    // For nodejs:
-    // "lib": ["esnext"],
-    // "types": ["node"],
-    // and npm install -D @types/node
+    // === Environment Settings ===
+    "module": "CommonJS",           // Format modul Node.js (WAJIB untuk Express)
+    "target": "ESNext",             // Gunakan fitur JS modern
+    "moduleResolution": "node",     // Cara TS mencari module seperti Node.js
+    "esModuleInterop": true,        // Agar bisa import library lama (require -> import)
+    "lib": ["ESNext"],              // Dukungan untuk fitur modern JS
+    "types": ["node"],              // Supaya TS tahu tipe-tipe bawaan Node.js
 
-    // Other Outputs
-    "sourceMap": true,
-    "declaration": true,
-    "declarationMap": true,
+    // === Output Options ===
+    "sourceMap": true,              // Hasilkan peta sumber untuk debugging
+    "declaration": true,            // Hasilkan file .d.ts untuk tipe data
+    "declarationMap": true,         // Peta sumber untuk file deklarasi
 
-    // Stricter Typechecking Options
+    // === Type Checking ===
+    "strict": true,                 // Aktifkan semua pemeriksaan ketat
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
+    "forceConsistentCasingInFileNames": true, // Hindari beda huruf besar/kecil di import
 
-    // Style Options
+    // === Style Options (bisa aktifkan nanti jika perlu) ===
     // "noImplicitReturns": true,
     // "noImplicitOverride": true,
     // "noUnusedLocals": true,
@@ -32,13 +31,14 @@
     // "noFallthroughCasesInSwitch": true,
     // "noPropertyAccessFromIndexSignature": true,
 
-    // Recommended Options
-    "strict": true,
-    "jsx": "react-jsx",
-    "verbatimModuleSyntax": true,
+    // === Recommended Options ===
+    // "jsx": "react-jsx",
+    // "verbatimModuleSyntax": true,
     "isolatedModules": true,
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
-    "skipLibCheck": true,
-  }
+    "skipLibCheck": true
+  },
+  "include": ["src"],               // Folder yang akan dikompilasi
+  "exclude": ["node_modules"]       // Folder yang tidak perlu dikompilasi
 }
