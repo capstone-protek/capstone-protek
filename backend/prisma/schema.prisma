@@ -1,0 +1,55 @@
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enum Status Mesin (Sesuai mockData)
+enum MachineStatus {
+  CRITICAL
+  WARNING
+  HEALTHY
+  OFFLINE
+}
+
+// Model 1: Machine
+model Machine {
+  id            Int             @id @default(autoincrement())
+  asetId        String          @unique // Contoh: "M-14850"
+  name          String          // Contoh: "CNC Grinder 01"
+  status        MachineStatus   @default(OFFLINE)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  // Relasi
+  alerts        Alert[]
+  sensorHistory SensorHistory[]
+}
+
+// Model 2: Alert
+model Alert {
+  id        Int      @id @default(autoincrement())
+  message   String
+  severity  String   // "HIGH", "MEDIUM", "LOW"
+  timestamp DateTime @default(now())
+  
+  // Relasi ke Machine
+  machineId Int
+  machine   Machine  @relation(fields: [machineId], references: [id])
+}
+
+// Model 3: SensorHistory (Sesuai request Notion)
+model SensorHistory {
+  id        Int      @id @default(autoincrement())
+  type      String   // Misal: "Vibration"
+  value     Float    // Misal: 85.5
+  timestamp DateTime @default(now())
+
+  // Relasi ke Machine
+  machineId Int
+  machine   Machine  @relation(fields: [machineId], references: [id])
+}
