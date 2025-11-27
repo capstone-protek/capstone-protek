@@ -1,70 +1,319 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/inter/700.css";
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
+@layer base {
   :root {
-    color: #213547;
-    background-color: #ffffff;
+    /* Primary Colors - Blue */
+    --primary: 217 91% 60%; /* #2563EB */
+    --primary-foreground: 0 0% 100%;
+    --primary-dark: 224 76% 40%; /* #1E40AF */
+    --primary-light: 214 95% 93%; /* #DBEAFE */
+
+    /* Status Colors */
+    --success: 160 84% 39%; /* #10B981 */
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%; /* #F59E0B */
+    --warning-foreground: 0 0% 100%;
+    --danger: 0 84% 60%; /* #EF4444 */
+    --danger-foreground: 0 0% 100%;
+    --info: 187 94% 43%; /* #06B6D4 */
+    --info-foreground: 0 0% 100%;
+
+    /* Neutral Colors */
+    --background: 220 20% 97%; /* Slightly blue-tinted white */
+    --foreground: 220 13% 18%; /* #1F2937 - Dark */
+    --muted: 220 14% 96%; /* #F3F4F6 - Light */
+    --muted-foreground: 220 9% 46%; /* #6B7280 - Medium */
+
+    /* Card & Container */
+    --card: 0 0% 100%;
+    --card-foreground: 220 13% 18%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 13% 18%;
+
+    /* Secondary */
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 220 13% 18%;
+
+    /* Accent */
+    --accent: 214 95% 93%;
+    --accent-foreground: 217 91% 60%;
+
+    /* Destructive */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Borders & Inputs */
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 217 91% 60%;
+
+    --radius: 0.75rem;
+
+    /* Sidebar */
+    --sidebar-background: 220 20% 14%;
+    --sidebar-foreground: 220 14% 96%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 13% 20%;
+    --sidebar-accent-foreground: 220 14% 96%;
+    --sidebar-border: 220 13% 20%;
+    --sidebar-ring: 217 91% 60%;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(224 76% 48%) 100%);
+    --gradient-success: linear-gradient(135deg, hsl(160 84% 39%) 0%, hsl(160 84% 32%) 100%);
+    --gradient-warning: linear-gradient(135deg, hsl(38 92% 50%) 0%, hsl(25 95% 53%) 100%);
+    --gradient-danger: linear-gradient(135deg, hsl(0 84% 60%) 0%, hsl(0 72% 51%) 100%);
+    --gradient-dark: linear-gradient(135deg, hsl(220 20% 14%) 0%, hsl(220 20% 8%) 100%);
   }
-  a:hover {
-    color: #747bff;
+
+  .dark {
+    --background: 220 20% 8%;
+    --foreground: 220 14% 96%;
+    --card: 220 20% 12%;
+    --card-foreground: 220 14% 96%;
+    --popover: 220 20% 12%;
+    --popover-foreground: 220 14% 96%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 13% 16%;
+    --secondary-foreground: 220 14% 96%;
+    --muted: 220 13% 16%;
+    --muted-foreground: 220 9% 56%;
+    --accent: 220 13% 18%;
+    --accent-foreground: 220 14% 96%;
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 13% 20%;
+    --input: 220 13% 20%;
+    --ring: 217 91% 60%;
   }
-  button {
-    background-color: #f9f9f9;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: "Inter", system-ui, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight text-foreground;
+  }
+}
+
+@layer components {
+  /* Status Badges */
+  .status-badge {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full transition-all duration-200;
+  }
+
+  .status-badge-success {
+    @apply bg-success/15 text-success border border-success/20;
+  }
+
+  .status-badge-warning {
+    @apply bg-warning/15 text-warning border border-warning/20;
+  }
+
+  .status-badge-danger {
+    @apply bg-danger/15 text-danger border border-danger/20;
+  }
+
+  .status-badge-info {
+    @apply bg-info/15 text-info border border-info/20;
+  }
+
+  /* Glass Effect Cards */
+  .glass-card {
+    @apply bg-card/80 backdrop-blur-xl border border-border/50 shadow-lg;
+  }
+
+  .glass-card-hover {
+    @apply glass-card transition-all duration-300 hover:shadow-xl hover:border-primary/30 hover:-translate-y-0.5;
+  }
+
+  /* Modern Card */
+  .card-modern {
+    @apply bg-card rounded-xl border border-border/50 shadow-sm transition-all duration-300;
+  }
+
+  .card-modern:hover {
+    @apply shadow-lg border-primary/20;
+  }
+
+  /* Gradient Text */
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary-dark;
+  }
+
+  /* Pulse Animation for Critical Items */
+  .pulse-danger {
+    animation: pulse-danger 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes pulse-danger {
+    0%, 100% {
+      box-shadow: 0 0 0 0 hsl(var(--danger) / 0.4);
+    }
+    50% {
+      box-shadow: 0 0 0 8px hsl(var(--danger) / 0);
+    }
+  }
+
+  /* Glow Effects */
+  .glow-primary {
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.3);
+  }
+
+  .glow-success {
+    box-shadow: 0 0 15px hsl(var(--success) / 0.25);
+  }
+
+  .glow-danger {
+    box-shadow: 0 0 15px hsl(var(--danger) / 0.25);
+  }
+
+  /* Stat Card Gradient Border */
+  .stat-card {
+    @apply relative overflow-hidden rounded-xl bg-card p-6;
+  }
+
+  .stat-card::before {
+    content: '';
+    @apply absolute top-0 left-0 w-1 h-full;
+  }
+
+  .stat-card-primary::before {
+    background: var(--gradient-primary);
+  }
+
+  .stat-card-success::before {
+    background: var(--gradient-success);
+  }
+
+  .stat-card-warning::before {
+    background: var(--gradient-warning);
+  }
+
+  .stat-card-danger::before {
+    background: var(--gradient-danger);
+  }
+
+  /* Scrollbar Styling */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-muted rounded-full;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full hover:bg-muted-foreground/50;
+  }
+
+  /* Loading Skeleton */
+  .skeleton {
+    @apply animate-pulse bg-muted rounded;
+  }
+
+  /* Chart Container */
+  .chart-container {
+    @apply relative rounded-lg bg-card p-4;
+  }
+
+  /* Input Focus Ring */
+  .input-modern {
+    @apply transition-all duration-200 focus:ring-2 focus:ring-primary/20 focus:border-primary;
+  }
+
+  /* Button Variants */
+  .btn-gradient {
+    background: var(--gradient-primary);
+    @apply text-primary-foreground font-medium shadow-md hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5;
+  }
+
+  .btn-glass {
+    @apply bg-card/50 backdrop-blur-sm border border-border/50 hover:bg-card/80 transition-all duration-200;
+  }
+
+  /* Notification Dot */
+  .notification-dot {
+    @apply absolute -top-1 -right-1 h-3 w-3 rounded-full bg-danger animate-pulse;
+  }
+
+  /* Progress Bar Modern */
+  .progress-modern {
+    @apply h-2 rounded-full bg-muted overflow-hidden;
+  }
+
+  .progress-modern-bar {
+    @apply h-full rounded-full transition-all duration-500 ease-out;
+  }
+
+  /* Table Row Hover */
+  .table-row-modern {
+    @apply transition-colors hover:bg-muted/50;
+  }
+
+  /* Fade In Animation */
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-out forwards;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Slide Up Animation */
+  .animate-slide-up {
+    animation: slideUp 0.4s ease-out forwards;
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Scale In Animation */
+  .animate-scale-in {
+    animation: scaleIn 0.2s ease-out forwards;
+  }
+
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
   }
 }
