@@ -1,5 +1,6 @@
 import { useToast } from "@/hooks/use-toast";
 import { Toast, ToastClose, ToastDescription, ToastProvider, ToastTitle, ToastViewport } from "@/components/ui/toast";
+import type { ReactNode } from "react";
 
 export function Toaster() {
   const { toasts } = useToast();
@@ -13,7 +14,7 @@ export function Toaster() {
               {title && <ToastTitle>{title}</ToastTitle>}
               {description && <ToastDescription>{description}</ToastDescription>}
             </div>
-            {action}
+            {action as ReactNode}
             <ToastClose />
           </Toast>
         );

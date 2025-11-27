@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { machines, alerts } from "@/data/mockData";
+import { mockMachines as machines, mockAlerts as alerts, mockMachineDetails } from "@/data/mockData";
 import { cn } from "@/lib/utils";
 
 interface Message {
@@ -24,22 +24,24 @@ const quickCommands = [
 function processQuery(query: string): string {
   const lowerQuery = query.toLowerCase();
 
-  // Status of all machines
+  // Status of all machines (using contract statuses)
   if (lowerQuery.includes("status") && (lowerQuery.includes("all") || lowerQuery.includes("machines"))) {
-    const critical = machines.filter(m => m.status === "critical").length;
-    const warning = machines.filter(m => m.status === "warning").length;
-    const normal = machines.filter(m => m.status === "normal").length;
-    
+    const critical = machines.filter(m => m.status === "CRITICAL").length;
+    const warning = machines.filter(m => m.status === "WARNING").length;
+    const healthy = machines.filter(m => m.status === "HEALTHY").length;
+
     let response = `📊 **Machine Status Overview**\n\n`;
     response += `- 🔴 **Critical**: ${critical} machine(s)\n`;
     response += `- 🟡 **At Risk**: ${warning} machine(s)\n`;
-    response += `- 🟢 **Normal**: ${normal} machine(s)\n\n`;
-    
+    response += `- 🟢 **Healthy**: ${healthy} machine(s)\n\n`;
+
     if (critical > 0) {
-      const criticalMachines = machines.filter(m => m.status === "critical");
+      const criticalMachines = machines.filter(m => m.status === "CRITICAL");
       response += `⚠️ **Critical Machines:**\n`;
       criticalMachines.forEach(m => {
-        response += `- ${m.name}: Health ${m.healthScore}%, predicted failure in ${m.nextPredictedFailure}\n`;
+        // derive a simple health score
+        const healthScore = m.status === "HEALTHY" ? 90 : m.status === "WARNING" ? 60 : m.status === "CRITICAL" ? 30 : 0;
+        response += `- ${m.name} (${m.asetId}): Health ${healthScore}%\n`;
       });
     }
     return response;
@@ -47,19 +49,16 @@ function processQuery(query: string): string {
 
   // Machines at risk
   if (lowerQuery.includes("risk") || lowerQuery.includes("at risk")) {
-    const atRisk = machines.filter(m => m.status === "warning" || m.status === "critical");
+    const atRisk = machines.filter(m => m.status === "WARNING" || m.status === "CRITICAL");
     if (atRisk.length === 0) {
       return "✅ Great news! No machines are currently at risk.";
     }
     let response = `⚠️ **Machines at Risk This Week:**\n\n`;
     atRisk.forEach(m => {
-      response += `**${m.name}**\n`;
-      response += `- Status: ${m.status === "critical" ? "🔴 Critical" : "🟡 Warning"}\n`;
-      response += `- Health Score: ${m.healthScore}%\n`;
-      response += `- Failure Type: ${m.failureType}\n`;
-      if (m.nextPredictedFailure) {
-        response += `- Predicted Failure: ${m.nextPredictedFailure}\n`;
-      }
+      const healthScore = m.status === "HEALTHY" ? 90 : m.status === "WARNING" ? 60 : m.status === "CRITICAL" ? 30 : 0;
+      response += `**${m.name}** (${m.asetId})\n`;
+      response += `- Status: ${m.status}\n`;
+      response += `- Health Score: ${healthScore}%\n`;
       response += `\n`;
     });
     return response;
@@ -70,37 +69,38 @@ function processQuery(query: string): string {
     const recentAlerts = alerts.slice(0, 3);
     let response = `🔔 **Recent Alerts:**\n\n`;
     recentAlerts.forEach(a => {
-      const priorityEmoji = a.priority === "critical" ? "🔴" : a.priority === "high" ? "🟠" : a.priority === "medium" ? "🟡" : "🟢";
-      response += `${priorityEmoji} **${a.type}**\n`;
-      response += `- Machine: ${a.machineName}\n`;
-      response += `- Message: ${a.message}\n`;
-      response += `- Action: ${a.recommendedAction}\n\n`;
+      const priorityEmoji = a.priority === "KRITIS" ? "🔴" : a.priority === "TINGGI" ? "🟠" : a.priority === "SEDANG" ? "🟡" : "🟢";
+      response += `${priorityEmoji} **${a.diagnosis}**\n`;
+      response += `- Machine: ${a.asetId}\n`;
+      response += `- Probability: ${(a.probabilitas * 100).toFixed(1)}%\n\n`;
     });
     return response;
   }
 
-  // Specific machine status
+  // Specific machine status - try to use detailed mock data if available
   const machineMatch = machines.find(m => 
     lowerQuery.includes(m.name.toLowerCase()) || 
-    lowerQuery.includes(m.id.toLowerCase())
+    lowerQuery.includes(m.asetId.toLowerCase())
   );
   
   if (machineMatch) {
-    const statusEmoji = machineMatch.status === "critical" ? "🔴" : machineMatch.status === "warning" ? "🟡" : "🟢";
+    const machineDetail = mockMachineDetails[machineMatch.asetId];
+    const statusEmoji = machineMatch.status === "CRITICAL" ? "🔴" : machineMatch.status === "WARNING" ? "🟡" : "🟢";
     let response = `**${machineMatch.name}** ${statusEmoji}\n\n`;
-    response += `- **Location**: ${machineMatch.location}\n`;
-    response += `- **Status**: ${machineMatch.status.charAt(0).toUpperCase() + machineMatch.status.slice(1)}\n`;
-    response += `- **Health Score**: ${machineMatch.healthScore}%\n`;
-    response += `- **Last Maintenance**: ${machineMatch.lastMaintenance}\n`;
-    if (machineMatch.nextPredictedFailure) {
-      response += `- **⚠️ Predicted Failure**: ${machineMatch.nextPredictedFailure}\n`;
-      response += `- **Failure Type**: ${machineMatch.failureType}\n`;
+    response += `- **Asset ID**: ${machineMatch.asetId}\n`;
+    response += `- **Status**: ${machineMatch.status}\n`;
+    const healthScore = machineMatch.status === "HEALTHY" ? 90 : machineMatch.status === "WARNING" ? 60 : machineMatch.status === "CRITICAL" ? 30 : 0;
+    response += `- **Health Score**: ${healthScore}%\n`;
+    if (machineDetail) {
+      response += `- **Last Reading**: ${machineDetail.lastReading.timestamp}\n`;
+      response += `\n**Sensor Readings:**\n`;
+      const r = machineDetail.lastReading;
+      response += `- airTemp: ${r.airTemp}°C\n`;
+      response += `- processTemp: ${r.processTemp}°C\n`;
+      response += `- rpm: ${r.rpm}\n`;
+      response += `- torque: ${r.torque}\n`;
+      response += `- toolWear: ${r.toolWear}\n`;
     }
-    response += `\n**Sensor Readings:**\n`;
-    machineMatch.sensors.forEach(s => {
-      const trendIcon = s.trend === "up" ? "📈" : s.trend === "down" ? "📉" : "➡️";
-      response += `- ${s.name}: ${s.value} ${s.unit} ${trendIcon}\n`;
-    });
     return response;
   }
 

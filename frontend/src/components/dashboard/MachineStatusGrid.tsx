@@ -3,13 +3,15 @@ import { ArrowRight, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { machines, type MachineStatus } from "@/data/mockData";
+import { mockMachines as machines } from "@/data/mockData";
+import type { MachineStatus } from "@/types";
 import { cn } from "@/lib/utils";
 
 const statusConfig: Record<MachineStatus, { icon: typeof AlertTriangle; label: string; className: string }> = {
-  normal: { icon: CheckCircle, label: "Normal", className: "text-success" },
-  warning: { icon: AlertTriangle, label: "At Risk", className: "text-warning" },
-  critical: { icon: XCircle, label: "Critical", className: "text-danger" },
+  HEALTHY: { icon: CheckCircle, label: "Healthy", className: "text-success" },
+  WARNING: { icon: AlertTriangle, label: "At Risk", className: "text-warning" },
+  CRITICAL: { icon: XCircle, label: "Critical", className: "text-danger" },
+  OFFLINE: { icon: XCircle, label: "Offline", className: "text-muted-foreground" },
 };
 
 function getHealthColor(score: number): string {
@@ -30,17 +32,20 @@ export function MachineStatusGrid() {
             const status = statusConfig[machine.status];
             const StatusIcon = status.icon;
 
+            // derive a simple health score for display
+            const healthScore = machine.status === "HEALTHY" ? 90 : machine.status === "WARNING" ? 60 : machine.status === "CRITICAL" ? 30 : 0;
+
             return (
               <Link
-                key={machine.id}
-                to={`/machine/${machine.id}`}
+                key={machine.asetId}
+                to={`/machine/${machine.asetId}`}
                 className="block"
               >
                 <Card className="hover:shadow-card-hover transition-shadow cursor-pointer border-l-4"
                   style={{
-                    borderLeftColor: machine.status === 'critical' 
+                    borderLeftColor: machine.status === 'CRITICAL' 
                       ? 'hsl(var(--danger))' 
-                      : machine.status === 'warning' 
+                      : machine.status === 'WARNING' 
                         ? 'hsl(var(--warning))' 
                         : 'hsl(var(--success))'
                   }}
@@ -52,7 +57,7 @@ export function MachineStatusGrid() {
                           {machine.name}
                         </h4>
                         <p className="text-xs text-muted-foreground">
-                          {machine.location}
+                          {machine.asetId}
                         </p>
                       </div>
                       <StatusIcon className={cn("h-5 w-5", status.className)} />
@@ -61,19 +66,13 @@ export function MachineStatusGrid() {
                     <div className="space-y-2">
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-foreground">Health Score</span>
-                        <span className="font-semibold">{machine.healthScore}%</span>
+                        <span className="font-semibold">{healthScore}%</span>
                       </div>
                       <Progress
-                        value={machine.healthScore}
-                        className={cn("h-2", getHealthColor(machine.healthScore))}
+                        value={healthScore}
+                        className={cn("h-2", getHealthColor(healthScore))}
                       />
                     </div>
-
-                    {machine.nextPredictedFailure && (
-                      <div className="mt-3 p-2 rounded bg-danger/10 text-danger text-xs font-medium">
-                        ⚠️ Predicted failure in {machine.nextPredictedFailure}
-                      </div>
-                    )}
 
                     <div className="mt-3 flex items-center justify-end">
                       <Button variant="ghost" size="sm" className="text-primary">

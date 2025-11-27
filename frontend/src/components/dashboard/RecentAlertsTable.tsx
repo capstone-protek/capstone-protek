@@ -16,14 +16,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { alerts, type AlertPriority } from "@/data/mockData";
+import { mockAlerts } from "@/data/mockData";
+import type { AlertPriority } from "@/types";
 import { cn } from "@/lib/utils";
 
 const priorityStyles: Record<AlertPriority, string> = {
-  critical: "status-badge-danger",
-  high: "status-badge-warning",
-  medium: "status-badge-info",
-  low: "status-badge-success",
+  KRITIS: "status-badge-danger",
+  TINGGI: "status-badge-warning",
+  SEDANG: "status-badge-info",
+  RENDAH: "status-badge-success",
 };
 
 function formatTimeAgo(timestamp: string): string {
@@ -39,7 +40,7 @@ function formatTimeAgo(timestamp: string): string {
 }
 
 export function RecentAlertsTable() {
-  const recentAlerts = alerts.slice(0, 5);
+  const recentAlerts = mockAlerts.slice(0, 5);
 
   return (
     <Card className="shadow-card">
@@ -69,14 +70,14 @@ export function RecentAlertsTable() {
               <TableRow key={alert.id}>
                 <TableCell>
                   <Link
-                    to={`/machine/${alert.machineId}`}
+                    to={`/machine/${alert.asetId}`}
                     className="font-medium text-primary hover:underline"
                   >
-                    {alert.machineName}
+                    {alert.asetId}
                   </Link>
                 </TableCell>
                 <TableCell className="text-muted-foreground">
-                  {alert.type}
+                  {alert.diagnosis}
                 </TableCell>
                 <TableCell>
                   <span

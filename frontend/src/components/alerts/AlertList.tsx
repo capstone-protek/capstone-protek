@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Search, Filter, Download, ChevronDown, Eye } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,17 +18,19 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { alerts, type Alert, type AlertPriority } from "@/data/mockData";
+import type { Alert, AlertPriority } from "@/types";
 import { cn } from "@/lib/utils";
+import { alertsAPI } from "@/services/api";
+import { mockAlerts } from "@/data/mockData";
 
 const priorityStyles: Record<AlertPriority, string> = {
-  critical: "status-badge-danger",
-  high: "status-badge-warning",
-  medium: "status-badge-info",
-  low: "status-badge-success",
+  KRITIS: "status-badge-danger",
+  TINGGI: "status-badge-warning",
+  SEDANG: "status-badge-info",
+  RENDAH: "status-badge-success",
 };
 
-const priorityOrder: AlertPriority[] = ["critical", "high", "medium", "low"];
+const priorityOrder: AlertPriority[] = ["KRITIS", "TINGGI", "SEDANG", "RENDAH"];
 
 function formatDate(timestamp: string): string {
   return new Date(timestamp).toLocaleString("en-US", {
@@ -44,13 +46,26 @@ export function AlertList() {
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("time");
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Try to fetch from API, fallback to mock data
+    alertsAPI
+      .getAll()
+      .then(setAlerts)
+      .catch(() => {
+        console.log("Using mock data");
+        setAlerts(mockAlerts);
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
   const filteredAlerts = alerts
     .filter((alert) => {
       const matchesSearch =
-        alert.machineName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        alert.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        alert.message.toLowerCase().includes(searchQuery.toLowerCase());
+        alert.asetId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        alert.diagnosis.toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchesPriority =
         priorityFilter === "all" || alert.priority === priorityFilter;
@@ -65,6 +80,10 @@ export function AlertList() {
       }
       return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
     });
+
+  if (loading) {
+    return <div className="p-4">Loading alerts...</div>;
+  }
 
   return (
     <div className="space-y-4">
@@ -89,10 +108,10 @@ export function AlertList() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Priorities</SelectItem>
-                  <SelectItem value="critical">Critical</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="KRITIS">Critical</SelectItem>
+                  <SelectItem value="TINGGI">High</SelectItem>
+                  <SelectItem value="SEDANG">Medium</SelectItem>
+                  <SelectItem value="RENDAH">Low</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -125,56 +144,56 @@ export function AlertList() {
         </CardHeader>
         <CardContent className="p-0">
           <div className="divide-y divide-border">
-            {filteredAlerts.map((alert) => (
-              <div
-                key={alert.id}
-                className={cn(
-                  "p-4 hover:bg-muted/50 transition-colors",
-                  !alert.isRead && "bg-primary-light/30"
-                )}
-              >
-                <div className="flex items-start gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span
-                        className={cn(
-                          "status-badge capitalize",
-                          priorityStyles[alert.priority]
-                        )}
-                      >
-                        {alert.priority}
-                      </span>
-                      <span className="text-sm text-muted-foreground">
-                        {formatDate(alert.timestamp)}
-                      </span>
-                      {!alert.isRead && (
-                        <span className="h-2 w-2 rounded-full bg-primary" />
-                      )}
-                    </div>
-                    <h4 className="font-semibold text-foreground">
-                      {alert.type}
-                    </h4>
-                    <Link
-                      to={`/machine/${alert.machineId}`}
-                      className="text-sm text-primary hover:underline"
-                    >
-                      {alert.machineName}
-                    </Link>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {alert.message}
-                    </p>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setSelectedAlert(alert)}
-                  >
-                    <Eye className="h-4 w-4 mr-1" />
-                    Details
-                  </Button>
-                </div>
+            {filteredAlerts.length === 0 ? (
+              <div className="p-4 text-center text-muted-foreground">
+                No alerts found
               </div>
-            ))}
+            ) : (
+              filteredAlerts.map((alert) => (
+                <div
+                  key={alert.id}
+                  className="p-4 hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span
+                          className={cn(
+                            "status-badge capitalize",
+                            priorityStyles[alert.priority]
+                          )}
+                        >
+                          {alert.priority}
+                        </span>
+                        <span className="text-sm text-muted-foreground">
+                          {formatDate(alert.timestamp)}
+                        </span>
+                      </div>
+                      <h4 className="font-semibold text-foreground">
+                        {alert.diagnosis}
+                      </h4>
+                      <Link
+                        to={`/machine/${alert.asetId}`}
+                        className="text-sm text-primary hover:underline"
+                      >
+                        Machine: {alert.asetId}
+                      </Link>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Probability: {(alert.probabilitas * 100).toFixed(1)}%
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedAlert(alert)}
+                    >
+                      <Eye className="h-4 w-4 mr-1" />
+                      Details
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </CardContent>
       </Card>
@@ -183,8 +202,8 @@ export function AlertList() {
       <Dialog open={!!selectedAlert} onOpenChange={() => setSelectedAlert(null)}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>{selectedAlert?.type}</DialogTitle>
-            <DialogDescription>{selectedAlert?.machineName}</DialogDescription>
+            <DialogTitle>{selectedAlert?.diagnosis}</DialogTitle>
+            <DialogDescription>{selectedAlert?.asetId}</DialogDescription>
           </DialogHeader>
           {selectedAlert && (
             <div className="space-y-4">
@@ -201,25 +220,48 @@ export function AlertList() {
 
               <div>
                 <h5 className="text-sm font-semibold text-foreground mb-1">
-                  Description
+                  Diagnosis
                 </h5>
                 <p className="text-sm text-muted-foreground">
-                  {selectedAlert.message}
+                  {selectedAlert.diagnosis}
                 </p>
               </div>
 
               <div>
                 <h5 className="text-sm font-semibold text-foreground mb-1">
-                  Recommended Action
+                  Sensor Data at Alert Time
                 </h5>
-                <p className="text-sm text-muted-foreground">
-                  {selectedAlert.recommendedAction}
-                </p>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Air Temp:</span>{" "}
+                    {selectedAlert.sensorDataTerkait.airTemp}°C
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Process Temp:</span>{" "}
+                    {selectedAlert.sensorDataTerkait.processTemp}°C
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">RPM:</span>{" "}
+                    {selectedAlert.sensorDataTerkait.rpm}
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Torque:</span>{" "}
+                    {selectedAlert.sensorDataTerkait.torque}
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Tool Wear:</span>{" "}
+                    {selectedAlert.sensorDataTerkait.toolWear}
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Probability:</span>{" "}
+                    {(selectedAlert.probabilitas * 100).toFixed(1)}%
+                  </div>
+                </div>
               </div>
 
               <div className="flex gap-2 pt-4">
                 <Button className="flex-1" asChild>
-                  <Link to={`/machine/${selectedAlert.machineId}`}>
+                  <Link to={`/machine/${selectedAlert.asetId}`}>
                     View Machine
                   </Link>
                 </Button>

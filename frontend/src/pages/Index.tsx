@@ -1,4 +1,4 @@
-import { Activity, AlertTriangle, CheckCircle, Gauge, Bell, MessageSquare, Wrench } from "lucide-react";
+import { Activity, AlertTriangle, Gauge, Bell, MessageSquare, Wrench } from "lucide-react";
 import { Link } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { StatsCard } from "@/components/dashboard/StatsCard";
@@ -45,21 +45,21 @@ const Index = () => {
         />
         <StatsCard
           title="Critical Alerts"
-          value={dashboardStats.criticalAlerts}
+          value={dashboardStats.criticalAlertsCount}
           icon={AlertTriangle}
           variant="danger"
           trend={{ value: -20, label: "vs last week" }}
         />
         <StatsCard
-          title="At Risk"
-          value={dashboardStats.atRisk}
-          icon={Gauge}
+          title="Offline Machines"
+          value={dashboardStats.offlineMachinesCount}
+          icon={Wrench}
           variant="warning"
         />
         <StatsCard
-          title="Normal Operation"
-          value={dashboardStats.normal}
-          icon={CheckCircle}
+          title="At Risk (recent)"
+          value={dashboardStats.recentCriticalAlerts.length}
+          icon={Gauge}
           variant="success"
         />
       </div>
