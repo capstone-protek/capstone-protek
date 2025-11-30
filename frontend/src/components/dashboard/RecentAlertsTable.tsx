@@ -43,11 +43,11 @@ export function RecentAlertsTable() {
   const recentAlerts = mockAlerts.slice(0, 5);
 
   return (
-    <Card className="shadow-card">
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
+    <Card className="shadow-lg border-2 border-primary/10 hover:shadow-xl hover:border-primary/20 transition-all bg-white">
+      <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-border/50">
         <div>
-          <CardTitle className="text-lg font-semibold">Recent Alerts</CardTitle>
-          <CardDescription>Latest maintenance alerts and warnings</CardDescription>
+          <CardTitle className="text-xl font-bold text-foreground">Recent Alerts</CardTitle>
+          <CardDescription className="mt-1.5">Latest maintenance alerts and warnings</CardDescription>
         </div>
         <Button variant="outline" size="sm" asChild>
           <Link to="/alerts">

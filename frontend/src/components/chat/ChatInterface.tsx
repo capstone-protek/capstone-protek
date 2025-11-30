@@ -14,11 +14,11 @@ interface Message {
   timestamp: Date;
 }
 
-const quickCommands = [
-  "Show status of all machines",
-  "Which machines are at risk this week?",
-  "Show recent alerts",
-  "Status of Turbine #1",
+const suggestions = [
+  "Show machines with critical status",
+  "What's the status of Turbine #12?",
+  "List all alerts from the last 24 hours",
+  "Which machines need maintenance this week?",
 ];
 
 function processQuery(query: string): string {
@@ -157,90 +157,104 @@ export function ChatInterface() {
   };
 
   return (
-    <Card className="shadow-card h-[calc(100vh-180px)] flex flex-col">
-      <CardHeader className="pb-3 border-b">
-        <CardTitle className="text-lg font-semibold flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-primary" />
-          Maintenance Copilot
-        </CardTitle>
-      </CardHeader>
+    <div className="flex h-[calc(100vh-8rem)] flex-col space-y-4">
+    {/* Header */}
+    <div>
+      <h1 className="text-3xl font-bold tracking-tight text-foreground">AI Copilot</h1>
+      <p className="text-muted-foreground">
+        Ask questions about your machines and get intelligent insights
+      </p>
+    </div>
 
-      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-        <div className="space-y-4">
+    {/* Chat Container */}
+    <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-card">
+      {/* Messages */}
+      <ScrollArea className="flex-1 p-6">
+        <div className="space-y-6">
           {messages.map((message) => (
             <div
               key={message.id}
-              className={cn(
-                "flex gap-3",
+              className={`flex gap-3 ${
                 message.role === "user" ? "justify-end" : "justify-start"
-              )}
+              }`}
             >
               {message.role === "assistant" && (
-                <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-                  <Bot className="h-4 w-4 text-primary-foreground" />
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                  <Bot className="h-5 w-5 text-primary" />
                 </div>
               )}
               <div
-                className={cn(
-                  "max-w-[80%] rounded-lg p-3 text-sm",
+                className={`max-w-[80%] rounded-lg px-4 py-3 ${
                   message.role === "user"
                     ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-foreground"
-                )}
+                    : "bg-secondary text-foreground"
+                }`}
               >
-                <div className="whitespace-pre-wrap">{message.content}</div>
+                <p className="text-sm whitespace-pre-wrap">{message.content}</p>
               </div>
               {message.role === "user" && (
-                <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                  <User className="h-4 w-4 text-muted-foreground" />
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+                  <User className="h-5 w-5 text-primary-foreground" />
                 </div>
               )}
             </div>
           ))}
-
           {isLoading && (
-            <div className="flex gap-3 justify-start">
-              <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center">
-                <Bot className="h-4 w-4 text-primary-foreground" />
+            <div className="flex gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                <Bot className="h-5 w-5 animate-pulse text-primary" />
               </div>
-              <div className="bg-muted rounded-lg p-3">
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              <div className="max-w-[80%] rounded-lg bg-secondary px-4 py-3">
+                <p className="text-sm text-muted-foreground">Analyzing...</p>
               </div>
             </div>
           )}
         </div>
       </ScrollArea>
 
-      <CardContent className="p-4 border-t">
-        {/* Quick Commands */}
-        <div className="flex flex-wrap gap-2 mb-3">
-          {quickCommands.map((cmd) => (
-            <Button
-              key={cmd}
-              variant="outline"
-              size="sm"
-              className="text-xs"
-              onClick={() => handleSend(cmd)}
-            >
-              {cmd}
-            </Button>
-          ))}
+      {/* Suggestions (shown when no messages) */}
+      {messages.length === 1 && (
+        <div className="border-t border-border p-4">
+          <p className="mb-3 text-sm font-medium text-muted-foreground">
+            Suggested queries:
+          </p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {suggestions.map((suggestion, index) => (
+              <Button
+                key={index}
+                variant="outline"
+                size="sm"
+                className="justify-start text-left"
+                onClick={() => handleSend(suggestion)}
+              >
+                {suggestion}
+              </Button>
+            ))}
+          </div>
         </div>
+      )}
 
-        {/* Input */}
-        <div className="flex gap-2">
+      {/* Input */}
+      <div className="border-t border-border p-4">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSend();
+          }}
+          className="flex gap-2"
+        >
           <Input
-            placeholder="Ask about machine status, alerts, or maintenance..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSend()}
+            placeholder="Ask about machine status, alerts, or maintenance..."
             disabled={isLoading}
           />
-          <Button onClick={() => handleSend()} disabled={isLoading || !input.trim()}>
+          <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
             <Send className="h-4 w-4" />
           </Button>
-        </div>
-      </CardContent>
-    </Card>
+        </form>
+      </div>
+    </div>
+  </div>
   );
 }

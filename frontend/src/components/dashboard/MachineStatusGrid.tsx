@@ -22,9 +22,9 @@ function getHealthColor(score: number): string {
 
 export function MachineStatusGrid() {
   return (
-    <Card className="shadow-card">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-lg font-semibold">Machine Status Overview</CardTitle>
+    <Card className="shadow-lg border-2 border-primary/10 hover:shadow-xl hover:border-primary/20 transition-all bg-white">
+      <CardHeader className="pb-4 border-b border-border/50">
+        <CardTitle className="text-xl font-bold text-foreground">Machine Status Overview</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -41,7 +41,7 @@ export function MachineStatusGrid() {
                 to={`/machine/${machine.asetId}`}
                 className="block"
               >
-                <Card className="hover:shadow-card-hover transition-shadow cursor-pointer border-l-4"
+                <Card className="hover:shadow-xl hover:scale-[1.02] transition-all duration-300 cursor-pointer border-l-4 border-2 group"
                   style={{
                     borderLeftColor: machine.status === 'CRITICAL' 
                       ? 'hsl(var(--danger))' 
@@ -50,7 +50,7 @@ export function MachineStatusGrid() {
                         : 'hsl(var(--success))'
                   }}
                 >
-                  <CardContent className="p-4">
+                  <CardContent className="p-5">
                     <div className="flex items-start justify-between mb-3">
                       <div>
                         <h4 className="font-semibold text-foreground text-sm">
@@ -74,9 +74,9 @@ export function MachineStatusGrid() {
                       />
                     </div>
 
-                    <div className="mt-3 flex items-center justify-end">
-                      <Button variant="ghost" size="sm" className="text-primary">
-                        Details <ArrowRight className="ml-1 h-4 w-4" />
+                    <div className="mt-4 flex items-center justify-end">
+                      <Button variant="ghost" size="sm" className="text-primary group-hover:text-primary/80 group-hover:bg-primary/5">
+                        Details <ArrowRight className="ml-1 h-4 w-4 group-hover:translate-x-1 transition-transform" />
                       </Button>
                     </div>
                   </CardContent>

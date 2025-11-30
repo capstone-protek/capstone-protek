@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Alerts from "./pages/Alerts";
 import Chat from "./pages/Chat";
+import Settings from "./pages/Settings";
 import MachineDetailPage from "./pages/MachineDetailPage";
 import NotFound from "./pages/NotFound";
 
@@ -21,6 +22,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/alerts" element={<Alerts />} />
           <Route path="/chat" element={<Chat />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="/machine/:id" element={<MachineDetailPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -86,9 +86,9 @@ export function AlertList() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Filters */}
-      <Card className="shadow-card">
+      <Card className="shadow-lg border-2 hover:shadow-xl transition-all">
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
@@ -136,9 +136,9 @@ export function AlertList() {
       </Card>
 
       {/* Alert List */}
-      <Card className="shadow-card">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg font-semibold">
+      <Card className="shadow-lg border-2 hover:shadow-xl transition-all">
+        <CardHeader className="pb-3 border-b">
+          <CardTitle className="text-xl font-bold">
             Active Alerts ({filteredAlerts.length})
           </CardTitle>
         </CardHeader>

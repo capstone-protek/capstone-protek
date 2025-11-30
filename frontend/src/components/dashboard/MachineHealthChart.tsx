@@ -13,13 +13,13 @@ import { healthTrendData } from "@/data/mockData";
 
 export function MachineHealthChart() {
   return (
-    <Card className="shadow-card">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-lg font-semibold">
+    <Card className="shadow-lg border-2 border-primary/10 hover:shadow-xl hover:border-primary/20 transition-all bg-white">
+      <CardHeader className="pb-4 border-b border-border/50">
+        <CardTitle className="text-xl font-bold text-foreground">
           Machine Health Trend (7 Days)
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-6">
         <div className="h-[300px]">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart

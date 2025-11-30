@@ -14,11 +14,27 @@ interface StatsCardProps {
 }
 
 const variantStyles = {
-  default: "bg-primary/10 text-primary",
-  success: "bg-success/10 text-success",
-  warning: "bg-warning/10 text-warning",
-  danger: "bg-danger/10 text-danger",
-  info: "bg-info/10 text-info",
+  default: "bg-white border-primary/30 shadow-lg",
+  success: "bg-white border-success/30 shadow-lg",
+  warning: "bg-white border-warning/30 shadow-lg",
+  danger: "bg-white border-danger/30 shadow-lg",
+  info: "bg-white border-info/30 shadow-lg",
+};
+
+const iconBgStyles = {
+  default: "bg-gradient-to-br from-primary to-primary/80 text-white shadow-lg",
+  success: "bg-gradient-to-br from-success to-success/80 text-white shadow-lg",
+  warning: "bg-gradient-to-br from-warning to-warning/80 text-white shadow-lg",
+  danger: "bg-gradient-to-br from-danger to-danger/80 text-white shadow-lg",
+  info: "bg-gradient-to-br from-info to-info/80 text-white shadow-lg",
+};
+
+const accentColors = {
+  default: "text-primary",
+  success: "text-success",
+  warning: "text-warning",
+  danger: "text-danger",
+  info: "text-info",
 };
 
 export function StatsCard({
@@ -29,29 +45,67 @@ export function StatsCard({
   variant = "default",
 }: StatsCardProps) {
   return (
-    <Card className="shadow-card hover:shadow-card-hover transition-shadow">
+    <Card className={cn(
+      "relative overflow-hidden border-2 hover:shadow-2xl transition-all duration-300 group hover:-translate-y-1",
+      variantStyles[variant]
+    )}>
+      {/* Colored left border */}
+      <div className={cn(
+        "absolute left-0 top-0 bottom-0 w-1",
+        variant === "default" && "bg-primary",
+        variant === "success" && "bg-success",
+        variant === "warning" && "bg-warning",
+        variant === "danger" && "bg-danger",
+        variant === "info" && "bg-info",
+      )} />
+      
       <CardContent className="p-6">
         <div className="flex items-start justify-between">
-          <div className="space-y-1">
-            <p className="text-sm font-medium text-muted-foreground">{title}</p>
-            <p className="text-3xl font-bold text-foreground">{value}</p>
+          <div className="space-y-3 flex-1">
+            <p className={cn(
+              "text-xs font-semibold uppercase tracking-wider",
+              accentColors[variant]
+            )}>
+              {title}
+            </p>
+            <p className={cn(
+              "text-5xl font-extrabold leading-none",
+              accentColors[variant]
+            )}>
+              {value}
+            </p>
             {trend && (
-              <p
-                className={cn(
-                  "text-xs font-medium",
+              <div className="flex items-center gap-2 pt-1">
+                <span className={cn(
+                  "text-sm font-bold",
                   trend.value >= 0 ? "text-success" : "text-danger"
-                )}
-              >
-                {trend.value >= 0 ? "↑" : "↓"} {Math.abs(trend.value)}%{" "}
-                {trend.label}
-              </p>
+                )}>
+                  {trend.value >= 0 ? "↑" : "↓"} {Math.abs(trend.value)}%
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {trend.label}
+                </span>
+              </div>
             )}
           </div>
-          <div className={cn("p-3 rounded-lg", variantStyles[variant])}>
-            <Icon className="h-6 w-6" />
+          <div className={cn(
+            "p-4 rounded-2xl group-hover:scale-110 group-hover:rotate-3 transition-all duration-300",
+            iconBgStyles[variant]
+          )}>
+            <Icon className="h-8 w-8" />
           </div>
         </div>
       </CardContent>
+      
+      {/* Decorative corner accent */}
+      <div className={cn(
+        "absolute -right-8 -top-8 w-24 h-24 rounded-full opacity-10 group-hover:opacity-20 transition-opacity",
+        variant === "default" && "bg-primary",
+        variant === "success" && "bg-success",
+        variant === "warning" && "bg-warning",
+        variant === "danger" && "bg-danger",
+        variant === "info" && "bg-info",
+      )} />
     </Card>
   );
 }
