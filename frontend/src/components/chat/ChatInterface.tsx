@@ -1,11 +1,9 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Bot, User, Loader2, Sparkles } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Send, Bot, User, } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { mockMachines as machines, mockAlerts as alerts, mockMachineDetails } from "@/data/mockData";
-import { cn } from "@/lib/utils";
 
 interface Message {
   id: string;
@@ -158,14 +156,6 @@ export function ChatInterface() {
 
   return (
     <div className="flex h-[calc(100vh-8rem)] flex-col space-y-4">
-    {/* Header */}
-    <div>
-      <h1 className="text-3xl font-bold tracking-tight text-foreground">AI Copilot</h1>
-      <p className="text-muted-foreground">
-        Ask questions about your machines and get intelligent insights
-      </p>
-    </div>
-
     {/* Chat Container */}
     <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-card">
       {/* Messages */}

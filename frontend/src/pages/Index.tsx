@@ -21,20 +21,6 @@ const Index = () => {
             Monitor machine health and predictive maintenance insights
           </p>
         </div>
-        <div className="flex gap-3">
-          <Button variant="outline" size="lg" className="bg-white border-2 shadow-md hover:shadow-lg hover:bg-primary/5 hover:border-primary transition-all" asChild>
-            <Link to="/alerts">
-              <Bell className="mr-2 h-4 w-4" />
-              View Alerts
-            </Link>
-          </Button>
-          <Button size="lg" className="bg-primary hover:bg-primary/90 shadow-md hover:shadow-lg transition-all" asChild>
-            <Link to="/chat">
-              <MessageSquare className="mr-2 h-4 w-4" />
-              Ask Copilot
-            </Link>
-          </Button>
-        </div>
       </div>
 
       {/* Stats Cards */}
@@ -95,17 +81,19 @@ const Index = () => {
         <Button 
           variant="outline" 
           className="h-auto py-8 flex-col gap-3 bg-white border-2 border-info/20 hover:border-info hover:bg-info/5 hover:shadow-lg transition-all group relative overflow-hidden"
+          asChild
         >
-          <div className="relative z-10">
+          <Link to="/schedule-service" className="relative z-10">
             <div className="p-3 rounded-xl bg-info/10 group-hover:bg-info/20 transition-colors">
               <Wrench className="h-7 w-7 text-info group-hover:scale-110 transition-transform" />
             </div>
             <span className="text-sm font-semibold text-foreground">Schedule Service</span>
-          </div>
+          </Link>
         </Button>
         <Button 
           variant="outline" 
           className="h-auto py-8 flex-col gap-3 bg-white border-2 border-success/20 hover:border-success hover:bg-success/5 hover:shadow-lg transition-all group relative overflow-hidden"
+          asChild
         >
           <div className="relative z-10">
             <div className="p-3 rounded-xl bg-success/10 group-hover:bg-success/20 transition-colors">

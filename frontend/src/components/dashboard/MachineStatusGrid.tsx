@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
+import { ArrowRight, AlertTriangle, CheckCircle, XCircle, CircleQuestionMark } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -10,14 +10,15 @@ import { cn } from "@/lib/utils";
 const statusConfig: Record<MachineStatus, { icon: typeof AlertTriangle; label: string; className: string }> = {
   HEALTHY: { icon: CheckCircle, label: "Healthy", className: "text-success" },
   WARNING: { icon: AlertTriangle, label: "At Risk", className: "text-warning" },
-  CRITICAL: { icon: XCircle, label: "Critical", className: "text-danger" },
-  OFFLINE: { icon: XCircle, label: "Offline", className: "text-muted-foreground" },
+  CRITICAL: { icon: XCircle, label: "Critical", className: "text-destructive" },
+  OFFLINE: { icon: CircleQuestionMark, label: "Offline", className: "text-muted-foreground" },
 };
 
 function getHealthColor(score: number): string {
   if (score >= 80) return "bg-success";
   if (score >= 60) return "bg-warning";
-  return "bg-danger";
+  if (score >=30) return "bg-destructive";
+  return "bg-muted-foreground";
 }
 
 export function MachineStatusGrid() {
@@ -33,7 +34,7 @@ export function MachineStatusGrid() {
             const StatusIcon = status.icon;
 
             // derive a simple health score for display
-            const healthScore = machine.status === "HEALTHY" ? 90 : machine.status === "WARNING" ? 60 : machine.status === "CRITICAL" ? 30 : 0;
+            const healthScore = machine.status === "HEALTHY" ? 90 : machine.status === "WARNING" ? 60 : machine.status === "CRITICAL" ? 30 : machine.status === "OFFLINE" ? 0 : 1;
 
             return (
               <Link
@@ -43,11 +44,13 @@ export function MachineStatusGrid() {
               >
                 <Card className="hover:shadow-xl hover:scale-[1.02] transition-all duration-300 cursor-pointer border-l-4 border-2 group"
                   style={{
-                    borderLeftColor: machine.status === 'CRITICAL' 
-                      ? 'hsl(var(--danger))' 
+                    borderColor: machine.status === 'CRITICAL' 
+                      ? 'hsl(var(--destructive))' 
                       : machine.status === 'WARNING' 
                         ? 'hsl(var(--warning))' 
-                        : 'hsl(var(--success))'
+                        : machine.status === 'HEALTHY' 
+                          ? 'hsl(var(--success))' 
+                          : 'hsl(var(--muted-foreground))', 
                   }}
                 >
                   <CardContent className="p-5">
