@@ -1,9 +1,8 @@
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Card, CardTitle, CardContent, CardDescription, CardHeader, CardFooter } from "@/components/ui/card";
+import { Card, CardTitle, CardContent, CardHeader, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 
 export default function Settings() {
@@ -20,7 +19,6 @@ export default function Settings() {
         <Card className="mb-6">
             <CardHeader>
                 <CardTitle className="text-2xl">User Preferences</CardTitle>
-                <CardDescription>Customize your experience</CardDescription>
             </CardHeader>
             <CardContent>
                 <div className="mb-4">
@@ -31,34 +29,22 @@ export default function Settings() {
                     <Label htmlFor="notifications" className="mb-2 block">Email Notifications</Label>
                     <Switch id="notifications" />
                 </div>
-                <div className="mb-4">
-                    <Label htmlFor="username" className="mb-2 block">Username</Label>
-                    <Input id="username" placeholder="Enter your username" />
-                </div>
             </CardContent>
             <CardFooter>
                 <Button>Save Changes</Button>
             </CardFooter>
         </Card>
+
         <Separator className="my-6" />
+
         <Card>
             <CardHeader>
-                <CardTitle className="text-2xl">Account Settings</CardTitle>
-                <CardDescription>Manage your account details</CardDescription>
+                <CardTitle className="text-2x1">System Preferences</CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="mb-4">
-                    <Label htmlFor="email" className="mb-2 block">Email Address</Label>
-                    <Input id="email" type="email" placeholder="Enter your email" />
-                </div>
-                <div className="mb-4">
-                    <Label htmlFor="password" className="mb-2 block">Password</Label>
-                    <Input id="password" type="password" placeholder="Enter new password" />
-                </div>
+                <div className=""></div>
+                <div className=""></div>
             </CardContent>
-            <CardFooter>
-                <Button variant="destructive">Delete Account</Button>
-            </CardFooter>
         </Card>
     </AppLayout>
   );
