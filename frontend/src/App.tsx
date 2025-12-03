@@ -1,35 +1,45 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Index from "./pages/Index";
+import Alerts from "./pages/Alerts";
+import Chat from "./pages/Chat";
+import Settings from "./pages/Settings";
+import { Sidebar } from "@/components/layout/Sidebar";
+import { Header } from "@/components/layout/Header";
+import MachineDetailPage from "./pages/MachineDetailPage";
+import NotFound from "./pages/NotFound";
 
-function App() {
-  const [count, setCount] = useState(0)
+const queryClient = new QueryClient();
 
-  return (
-    <>
-      <div className='flex items-center justify-center'>
-        <a href="https://vite.dev" target="_blank" rel='noopener noreferrer'>
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank" rel='noopener noreferrer'>
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
+      <BrowserRouter>
+      <div className="flex min-h-screen bg-background">
+        <Sidebar/>
+        <div className="flex-1 pl-64">
+          <Header />
+          <main className="p-6 pt-12">
+           <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/alerts" element={<Alerts />} />
+              <Route path="/chat" element={<Chat />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/machine/:id" element={<MachineDetailPage />} />
+              <Route path="*" element={<NotFound />} />
+           </Routes>
+          </main>
+        </div>
       </div>
-      <h1 className='text-blue-400'>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
+      </BrowserRouter>
+    </TooltipProvider>
+  </QueryClientProvider>
+  
+);
 
-export default App
+export default App;
