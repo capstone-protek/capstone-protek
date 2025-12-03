@@ -1,30 +1,31 @@
-import { NavLink } from "react-router-dom";
-import { LayoutDashboard, AlertTriangle, MessageSquare, Settings, Activity } from "lucide-react";
+import { NavLink, Link } from "react-router-dom";
+import { LayoutDashboard, AlertTriangle, MessageSquare, Settings, Activity, MessageCircleQuestionMark } from "lucide-react";
 import { cn } from "@/lib/utils";
+import logo from "@/assets/protek-logo.svg";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Alerts", href: "/alerts", icon: AlertTriangle },
-  { name: "Machines", href: "/machines", icon: Activity },
-  { name: "Copilot", href: "/copilot", icon: MessageSquare },
+  { name: "Machines", href: "/machines:id", icon: Activity },
+  { name: "Copilot", href: "/chat", icon: MessageSquare },
   { name: "Settings", href: "/settings", icon: Settings },
 ];
 
 export function Sidebar() {
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r border-border bg-card">
-      <div className="flex h-full flex-col">
+      <div className="flex h-full flex-col justify-between">
         {/* Logo */}
         <div className="flex h-16 items-center border-b border-border px-6">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-primary">
-              <Activity className="h-6 w-6 text-primary-foreground" />
+          <Link to="/" className="flex items-center gap-3">
+            <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-gradient-primary">
+              <img src={logo} className="h-14 w-14" />
             </div>
             <div>   
-              <h1 className="text-lg font-bold text-foreground">MaintenAI</h1>
-              <p className="text-xs text-muted-foreground">Predictive System</p>
+              <h1 className="text-lg font-bold text-foreground">PROTEK</h1>
+              <p className="text-xs text-muted-foreground">Predictive Maintenance Copilot System</p>
             </div>
-          </div>
+          </Link>
         </div>
 
         {/* Navigation */}
@@ -54,13 +55,12 @@ export function Sidebar() {
 
         {/* Footer */}
         <div className="border-t border-border p-4">
-          <div className="flex items-center gap-3 rounded-lg bg-secondary p-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
-              TM
+          <div className="flex items-center gap-4 rounded-lg bg-secondary p-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded bg-primary text-xs font-semibold text-primary-foreground">
+              <MessageCircleQuestionMark />
             </div>
             <div className="flex-1 overflow-hidden">
-              <p className="text-sm font-medium text-foreground">Team Member</p>
-              <p className="truncate text-xs text-muted-foreground">Engineer</p>
+              <p className="text-sm font-medium text-foreground">Help & Guide</p>
             </div>
           </div>
         </div>

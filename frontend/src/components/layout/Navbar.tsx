@@ -1,11 +1,12 @@
-import { Bell, Settings, Activity } from "lucide-react";
+import { Bell, Settings } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import logo from "@/assets/protek-logo.svg";
 import { cn } from "@/lib/utils";
 
+
 const navItems = [
-  { label: "Dashboard", path: "/" },
   { label: "Alert Center", path: "/alerts" },
   { label: "Chat", path: "/chat" },
 ];
@@ -19,9 +20,7 @@ export function Navbar() {
       <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex h-16 items-center justify-between">
         <div className="flex items-center gap-8">
           <Link to="/" className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-              <Activity className="h-5 w-5 text-primary-foreground" />
-            </div>
+            <img src={logo} className="h-8 w-8" />
             <span className="text-lg font-bold text-foreground">
               PROTEK
             </span>

@@ -1,4 +1,6 @@
-import { Navbar } from "./Navbar";
+import React from "react";
+import { Header } from "./Header";
+import { Sidebar } from "./Sidebar";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -7,7 +9,8 @@ interface AppLayoutProps {
 export function AppLayout({ children }: AppLayoutProps) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50/50">
-      <Navbar />
+      <Header />
+      <Sidebar />
       <main className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
         {children}
       </main>
