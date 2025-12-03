@@ -33,7 +33,7 @@ import { cn } from "@/lib/utils";
 const statusConfig: Record<MachineStatus, { icon: typeof AlertTriangle; label: string; className: string }> = {
   HEALTHY: { icon: CheckCircle, label: "Healthy", className: "text-success bg-success/10" },
   WARNING: { icon: AlertTriangle, label: "At Risk", className: "text-warning bg-warning/10" },
-  CRITICAL: { icon: XCircle, label: "Critical", className: "text-danger bg-danger/10" },
+  CRITICAL: { icon: XCircle, label: "Critical", className: "text-destructive bg-destructive/10" },
   OFFLINE: { icon: XCircle, label: "Offline", className: "text-muted-foreground bg-muted/10" },
 };
 

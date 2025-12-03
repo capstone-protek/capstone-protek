@@ -17,7 +17,7 @@ const variantStyles = {
   default: "bg-white border-primary/30 shadow-lg",
   success: "bg-white border-success/30 shadow-lg",
   warning: "bg-white border-warning/30 shadow-lg",
-  danger: "bg-white border-red-400/30 shadow-lg",
+  danger: "bg-white border-destructive/30 shadow-lg",
   info: "bg-white border-info/30 shadow-lg",
 };
 
@@ -25,7 +25,7 @@ const iconBgStyles = {
   default: "bg-gradient-to-br from-primary to-primary/80 text-white shadow-lg",
   success: "bg-gradient-to-br from-success to-success/80 text-white shadow-lg",
   warning: "bg-gradient-to-br from-warning to-warning/80 text-white shadow-lg",
-  danger: "bg-gradient-to-br from-red-400 to-red-400/80 text-white shadow-lg",
+  danger: "bg-gradient-to-br from-destructive to-destructive/80 text-white shadow-lg",
   info: "bg-gradient-to-br from-info to-info/80 text-white shadow-lg",
 };
 
@@ -33,7 +33,7 @@ const accentColors = {
   default: "text-primary",
   success: "text-success",
   warning: "text-warning",
-  danger: "text-red-400",
+  danger: "text-destructive",
   info: "text-info",
 };
 
@@ -55,7 +55,7 @@ export function StatsCard({
         variant === "default" && "bg-primary",
         variant === "success" && "bg-success",
         variant === "warning" && "bg-warning",
-        variant === "danger" && "bg-red-400",
+        variant === "danger" && "bg-destructive",
         variant === "info" && "bg-info",
       )} />
       
@@ -78,7 +78,7 @@ export function StatsCard({
               <div className="flex items-center gap-2 pt-1">
                 <span className={cn(
                   "text-sm font-bold",
-                  trend.value >= 0 ? "text-success" : "text-red-400"
+                  trend.value >= 0 ? "text-success" : "text-destructive"
                 )}>
                   {trend.value >= 0 ? "↑" : "↓"} {Math.abs(trend.value)}%
                 </span>
@@ -103,7 +103,7 @@ export function StatsCard({
         variant === "default" && "bg-primary",
         variant === "success" && "bg-success",
         variant === "warning" && "bg-warning",
-        variant === "danger" && "bg-red-400",
+        variant === "danger" && "bg-destructive",
         variant === "info" && "bg-info",
       )} />
     </Card>

@@ -1,18 +1,18 @@
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Card, CardTitle, CardContent, CardHeader, CardFooter } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Button } from "@/components/ui/button";
+import { Card, CardTitle, CardContent, CardHeader } from "@/components/ui/card";
+// import { Label } from "@/components/ui/label";
+// import { Switch } from "@/components/ui/switch";
+// import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { useTheme } from "@/context/theme"; // pastikan path sesuai penempatan file context
+// import { useTheme } from "@/context/theme";
 
 export default function Settings() {
-  const { dark, setDark } = useTheme();
+  // const { dark, setDark } = useTheme();
 
-  function handleSave() {
-    // Kalau nanti ada preferensi lain, tinggal disimpan di sini
-    console.log("saved");
-  }
+  // function handleSave() {
+  //   // Kalau nanti ada preferensi lain, tinggal disimpan di sini
+  //   console.log("saved");
+  // }
 
   return (
     <AppLayout>
@@ -30,14 +30,10 @@ export default function Settings() {
           <CardTitle className="text-2xl">User Preferences</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="mb-4 flex items-center justify-between">
-            <Label htmlFor="dark-mode">Dark Mode</Label>
-            <Switch id="dark-mode" checked={dark} onCheckedChange={setDark} />
-          </div>
         </CardContent>
-        <CardFooter>
+        {/* <CardFooter>
           <Button onClick={handleSave}>Save Changes</Button>
-        </CardFooter>
+        </CardFooter> */}
       </Card>
 
       <Separator className="my-6" />

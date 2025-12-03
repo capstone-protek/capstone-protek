@@ -23,7 +23,7 @@ export function Sidebar() {
             </div>
             <div>   
               <h1 className="text-lg font-bold text-foreground">PROTEK</h1>
-              <p className="text-xs text-muted-foreground">Predictive Maintenance Copilot System</p>
+              <p className="text-xs text-muted-foreground">Predictive Operations & Equipment Tracker</p>
             </div>
           </Link>
         </div>
@@ -54,15 +54,14 @@ export function Sidebar() {
         </nav>
 
         {/* Footer */}
-        <div className="border-t border-border p-4">
-          <div className="flex items-center gap-4 rounded-lg bg-secondary p-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded bg-primary text-xs font-semibold text-primary-foreground">
-              <MessageCircleQuestionMark />
-            </div>
-            <div className="flex-1 overflow-hidden">
-              <p className="text-sm font-medium text-foreground">Help & Guide</p>
-            </div>
-          </div>
+        <div className="border-t border-border px-6 py-4">
+          <Link
+            to="/support"
+            className="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"
+          >
+            <MessageCircleQuestionMark className="h-5 w-5 transition-all group-hover:scale-110" />
+            Support & Help
+          </Link>
         </div>
       </div>
     </aside>
