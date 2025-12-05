@@ -1,14 +1,14 @@
 import axios from "axios";
 
 export class ChatbotService {
-  private endpoint = process.env.BIZNET_ENDPOINT!;
-  private apiKey = process.env.BIZNET_API_KEY!;
-  private model = process.env.MODEL_NAME!;
+  private endpoint = process.env.BIZNETGIO_ENDPOINT!;
+  private apiKey = process.env.BIZNETGIO_API_KEY!;
+  private model = process.env.BIZNETGIO_MODEL_NAME!;
 
   async askChatbot(userMessage: string) {
-    if (!this.endpoint) throw new Error("Missing BIZNET_ENDPOINT");
-    if (!this.apiKey) throw new Error("Missing BIZNET_API_KEY");
-    if (!this.model) throw new Error("Missing MODEL_NAME");
+    if (!this.endpoint) throw new Error("Missing BIZNETGIO_ENDPOINT");
+    if (!this.apiKey) throw new Error("Missing BIZNETGIO_API_KEY");
+    if (!this.model) throw new Error("Missing BIZNETGIO_MODEL_NAME");
 
     const systemPrompt = `
 ROLE: Kamu adalah "Intent Classifier" untuk sistem Predictive Maintenance. Kamu TIDAK menjadi asisten chat. Kamu HANYA mengembalikan JSON.
