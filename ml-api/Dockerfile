@@ -19,4 +19,5 @@ EXPOSE 8000
 
 # 7. Perintah untuk menjalankan aplikasi saat container start
 # Penting: host="0.0.0.0" agar bisa diakses dari luar container
-CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Railway akan inject PORT environment variable
+CMD uvicorn src.main:app --host 0.0.0.0 --port ${PORT:-8000}
