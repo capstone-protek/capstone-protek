@@ -53,3 +53,4 @@ model SensorHistory {
   machineId Int
   machine   Machine  @relation(fields: [machineId], references: [id])
 }
+
