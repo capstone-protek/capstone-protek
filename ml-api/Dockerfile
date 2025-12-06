@@ -1,5 +1,5 @@
 # 1. Gunakan base image Python yang ringan
-FROM python:3.9-slim
+FROM python:3.11-slim
 
 # 2. Set folder kerja di dalam container
 WORKDIR /app
