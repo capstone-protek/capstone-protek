@@ -1,6 +1,7 @@
 __pycache__/
 .venv/
 *.pkl
+!src/models/*.pkl
 *.csv
 *.pyc
 .pytest_cache/
