@@ -5,7 +5,7 @@ import { PredictPayload, MLResponse } from '../types';
 const prisma = new PrismaClient();
 
 // URL ML API Railway (Sesuai yang sudah dites dan valid)
-const ML_API_URL = 'https://coba-deploy-ml-production.up.railway.app/predict';
+const ML_API_URL = 'https://capstone-protek-production.up.railway.app/predict';
 
 export const predictMaintenance = async (req: Request, res: Response) => {
   try {
