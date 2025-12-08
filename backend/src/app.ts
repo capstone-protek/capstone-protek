@@ -5,7 +5,8 @@ import cors from 'cors';
 // IMPORT ROUTER KITA
 import alertRoutes from './routes/alert.routes';
 import machineRoutes from './routes/machine.routes'; // (Nyalakan ini nanti)
-// import dashboardRoutes from './routes/dashboard.routes'; // (Nyalakan ini nanti)
+import predictRoutes from './routes/predict.routes';
+import dashboardRoutes from './routes/dashboard.routes'; // (Nyalakan ini nanti)
 
 // BUAT APLIKASI
 const app = express();
@@ -18,7 +19,8 @@ app.use(express.json()); // Izinkan server membaca JSON
 // Setiap request ke /api/alerts akan ditangani oleh alertRoutes
 app.use('/api/alerts', alertRoutes);
 app.use('/api/machines', machineRoutes);
-// app.Gunakan('/api/dashboard', dashboardRoutes);
+app.use('/api/predict', predictRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // EKSPOR APP (TANPA .listen())
 export default app;

@@ -9,7 +9,7 @@
     "target": "ESNext",             // Gunakan fitur JS modern
     "moduleResolution": "node",     // Cara TS mencari module seperti Node.js
     "esModuleInterop": true,        // Agar bisa import library lama (require -> import)
-    "lib": ["ESNext"],              // Dukungan untuk fitur modern JS
+    "lib": ["ES2020"],              // Dukungan untuk fitur modern JS
     "types": ["node"],              // Supaya TS tahu tipe-tipe bawaan Node.js
 
     // === Output Options ===
@@ -38,6 +38,6 @@
     "moduleDetection": "force",
     "skipLibCheck": true
   },
-  "include": ["src"],               // Folder yang akan dikompilasi
+  "include": ["src",],               // Folder yang akan dikompilasi
   "exclude": ["node_modules"]       // Folder yang tidak perlu dikompilasi
 }

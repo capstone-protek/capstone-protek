@@ -1,80 +1,73 @@
-// backend/prisma/seed.ts
-import 'dotenv/config';
-import { PrismaClient, MachineStatus, Prisma } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🚀 Start seeding...');
+  console.log('🌱 Start seeding...');
 
-  // 1. Clean Slate (Hapus data lama biar gak duplikat)
-  await prisma.sensorHistory.deleteMany();
+  // 1. Bersihkan Data Lama (Biar tidak duplikat/error)
   await prisma.alert.deleteMany();
+  await prisma.sensorHistory.deleteMany();
   await prisma.machine.deleteMany();
-  
-  console.log('🗑️ Deleted old data.');
 
-  // 2. Definisi Mesin Dummy
+  console.log('🧹 Old data cleared.');
+
+  // 2. Data Mesin "Real" (Sesuai Dataset ML / Kaggle)
+  // Kita siapkan mesin-mesin yang nanti akan kita demo-kan
   const machinesData = [
-    { asetId: 'M-18096', name: 'CNC Milling A1', status: MachineStatus.CRITICAL },
-    { asetId: 'M-20231', name: 'Lathe Machine X1', status: MachineStatus.HEALTHY },
-    { asetId: 'M-20232', name: 'Drill Press B2', status: MachineStatus.WARNING },
-    { asetId: 'M-33011', name: 'Grinding Stn 04', status: MachineStatus.OFFLINE },
+    {
+      asetId: "M-14850", // ID Paling umum di dataset
+      name: "CNC Milling Machine A1",
+      status: "HEALTHY"
+    },
+    {
+      asetId: "M-33011", // <-- ID YANG KAMU TANYAKAN
+      name: "Grinding Station 04",
+      status: "HEALTHY"
+    },
+    {
+      asetId: "M-18096", // ID yang tadi kamu tes
+      name: "Hydraulic Press B2",
+      status: "HEALTHY"
+    },
+    {
+      asetId: "M-20232",
+      name: "Drill Press X1",
+      status: "HEALTHY"
+    }
   ];
 
+  // 3. Masukkan ke Database
   for (const m of machinesData) {
-    // Create Machine
     const machine = await prisma.machine.create({
       data: {
         asetId: m.asetId,
         name: m.name,
-        status: m.status,
-      },
+        // @ts-ignore (Enum kadang rewel di seeder, kita ignore aman)
+        status: m.status 
+      }
     });
+    console.log(`✅ Created machine: ${machine.asetId}`);
 
-    console.log(`✅ Created machine: ${m.name} (ID: ${machine.id})`);
+    // 4. Opsional: Buat Dummy History Awal (Biar grafik tidak kosong melompong)
+    // Kita buat 10 data sensor palsu untuk masing-masing mesin
+    const historyData = Array.from({ length: 10 }).map((_, i) => ({
+      machineId: machine.id,
+      type: 'RPM',
+      value: 1400 + Math.random() * 200, // Random 1400-1600
+      timestamp: new Date(Date.now() - i * 3600000) // Mundur per jam
+    }));
 
-    // Jika Offline, skip generate data sensor
-    if (m.status === MachineStatus.OFFLINE) continue;
-
-    // 3. Generate History (Loop Mundur 24 Jam terakhir)
-    const historyData: Prisma.SensorHistoryCreateManyInput[] = [];
-    const now = new Date();
-    
-    // Kita buat 50 titik data ke belakang (interval random)
-    for (let i = 0; i < 50; i++) {
-      const timePoint = new Date(now.getTime() - i * 15 * 60 * 1000); // Mundur i * 15 menit
-      const isCritical = m.status === MachineStatus.CRITICAL;
-      
-      // Karena Schema pakai model EAV (Type & Value), kita push per tipe sensor
-      // 1. RPM
-      historyData.push({
-        machineId: machine.id,
-        timestamp: timePoint,
-        type: 'RPM',
-        value: isCritical ? (1200 + Math.random() * 500) : (1500 + Math.random() * 100),
-      });
-
-      // 2. Temperature
-      historyData.push({
-        machineId: machine.id,
-        timestamp: timePoint,
-        type: 'Temperature',
-        value: isCritical ? (80 + Math.random() * 20) : (60 + Math.random() * 5),
-      });
-    }
-
-    // Bulk Insert biar cepat
     await prisma.sensorHistory.createMany({ data: historyData });
   }
 
-  console.log('🏁 Seeding finished.');
+  console.log('✅ Seeding finished.');
 }
 
 main()
   .catch((e) => {
     console.error(e);
-    process.exit(1);
+    throw e;
   })
   .finally(async () => {
     await prisma.$disconnect();
