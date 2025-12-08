@@ -1,0 +1,160 @@
+openapi: 3.0.0
+info:
+  title: Predictive Maintenance Copilot API
+  description: API Documentation for Capstone Project A25-CS050
+  version: 1.0.0
+  contact:
+    name: Backend Team (Faris)
+
+servers:
+  - url: http://localhost:4000
+    description: Local Development Server
+
+tags:
+  - name: Dashboard
+    description: Ringkasan status sistem
+  - name: Prediction
+    description: Integrasi Machine Learning (Core Feature)
+  - name: Machines
+    description: Manajemen data mesin & sensor history
+  - name: Alerts
+    description: Notifikasi kerusakan
+
+paths:
+  # --- DASHBOARD ---
+  /api/dashboard/summary:
+    get:
+      summary: Get Dashboard Summary
+      tags: [Dashboard]
+      description: Mengambil total mesin, mesin kritis, alert hari ini, dan health score.
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  summary:
+                    type: object
+                    properties:
+                      totalMachines:
+                        type: integer
+                      criticalMachines:
+                        type: integer
+                      systemHealth:
+                        type: integer
+                  recentAlerts:
+                    type: array
+                    items:
+                      type: object
+
+  # --- PREDICTION (THE CORE) ---
+  /api/predict:
+    post:
+      summary: Trigger Prediction (Simulasi Sensor)
+      tags: [Prediction]
+      description: Kirim data sensor manual -> Simpan ke DB -> Kirim ke ML -> Buat Alert jika rusak.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - Machine_ID
+                - Air_Temp
+                - Process_Temp
+                - RPM
+                - Torque
+                - Tool_Wear
+              properties:
+                Machine_ID:
+                  type: string
+                  example: "M-33011"
+                Type:
+                  type: string
+                  example: "L"
+                Air_Temp:
+                  type: number
+                  example: 305.5
+                Process_Temp:
+                  type: number
+                  example: 310.4
+                RPM:
+                  type: integer
+                  example: 1600
+                Torque:
+                  type: number
+                  example: 65.5
+                Tool_Wear:
+                  type: integer
+                  example: 220
+      responses:
+        200:
+          description: Prediction Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  alert_created:
+                    type: boolean
+                    example: true
+                  ml_result:
+                    type: object
+
+  # --- MACHINES ---
+  /api/machines:
+    get:
+      summary: List All Machines
+      tags: [Machines]
+      responses:
+        200:
+          description: Array of machines
+
+  /api/machines/{id}:
+    get:
+      summary: Get Machine Detail
+      tags: [Machines]
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+          description: Bisa ID Angka (1) atau Aset ID (M-33011)
+      responses:
+        200:
+          description: Machine Detail Object
+        404:
+          description: Machine not found
+
+  /api/machines/{id}/history:
+    get:
+      summary: Get Sensor History (Grafik)
+      tags: [Machines]
+      description: Mengambil data sensor historis untuk grafik frontend.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Aset ID (e.g., M-33011)
+      responses:
+        200:
+          description: Array of sensor readings (Time Series)
+
+  # --- ALERTS ---
+  /api/alerts:
+    get:
+      summary: List All Alerts
+      tags: [Alerts]
+      description: Mengambil riwayat alert/kerusakan yang tersimpan di DB.
+      responses:
+        200:
+          description: Array of alerts
