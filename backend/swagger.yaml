@@ -8,7 +8,7 @@ info:
 
 # URL SERVER (Update sesuai kebutuhan)
 servers:
-  - url: https://protek-api-production.up.railway.app
+  - url: https://api-protek-production.up.railway.app
     description: 🚀 Production Server (Railway)
   - url: http://localhost:4000
     description: 💻 Local Development
