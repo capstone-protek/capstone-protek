@@ -6,6 +6,7 @@ info:
   contact:
     name: Backend Team (Faris)
 
+# URL SERVER (Update sesuai kebutuhan)
 servers:
   - url: https://api-protek-production.up.railway.app
     description: 🚀 Production Server (Railway)
@@ -42,21 +43,26 @@ paths:
                     properties:
                       totalMachines:
                         type: integer
+                        example: 4
                       criticalMachines:
                         type: integer
+                        example: 1
                       systemHealth:
                         type: integer
+                        example: 85
                   recentAlerts:
                     type: array
                     items:
                       type: object
 
-  # --- PREDICTION (THE CORE) ---
+  # --- PREDICTION (CORE FEATURE) ---
   /api/predict:
     post:
       summary: Trigger Prediction (Simulasi Sensor)
       tags: [Prediction]
-      description: Kirim data sensor manual -> Simpan ke DB -> Kirim ke ML -> Buat Alert jika rusak.
+      description: >
+        Mengirim data sensor ke ML API. 
+        Jika ML mendeteksi kerusakan (CRITICAL), Backend akan otomatis membuat Alert baru di Database.
       requestBody:
         required: true
         content:
@@ -73,24 +79,31 @@ paths:
               properties:
                 Machine_ID:
                   type: string
-                  example: "M-33011"
+                  description: ID Mesin sesuai Database (Case Sensitive)
+                  example: "M-14850"
                 Type:
                   type: string
+                  description: Tipe kualitas produk (L/M/H)
                   example: "L"
                 Air_Temp:
                   type: number
+                  description: Suhu Udara [K]
                   example: 305.5
                 Process_Temp:
                   type: number
+                  description: Suhu Proses [K]
                   example: 310.4
                 RPM:
                   type: integer
+                  description: Kecepatan Putar [rpm]
                   example: 1600
                 Torque:
                   type: number
+                  description: Torsi [Nm]
                   example: 65.5
                 Tool_Wear:
                   type: integer
+                  description: Keausan Alat [min]
                   example: 220
       responses:
         200:
@@ -102,12 +115,26 @@ paths:
                 properties:
                   status:
                     type: string
-                    example: success
+                    example: "success"
+                  input_saved:
+                    type: boolean
+                    example: true
                   alert_created:
                     type: boolean
+                    description: True jika hasil prediksi adalah CRITICAL
                     example: true
                   ml_result:
                     type: object
+                    properties:
+                      Status:
+                        type: string
+                        example: "⚠️ CRITICAL FAILURE DETECTED"
+                      Failure_Type:
+                        type: string
+                        example: "Power Failure"
+                      RUL_Status:
+                        type: string
+                        example: "🚨 CRITICAL"
 
   # --- MACHINES ---
   /api/machines:
@@ -128,7 +155,8 @@ paths:
           schema:
             type: string
           required: true
-          description: Bisa ID Angka (1) atau Aset ID (M-33011)
+          description: Bisa ID Angka (1) atau Aset ID (M-14850)
+          example: "M-14850"
       responses:
         200:
           description: Machine Detail Object
@@ -146,7 +174,8 @@ paths:
           required: true
           schema:
             type: string
-          description: Aset ID (e.g., M-33011)
+          description: Aset ID (e.g., M-14850)
+          example: "M-14850"
       responses:
         200:
           description: Array of sensor readings (Time Series)
