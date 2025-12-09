@@ -1,4 +1,7 @@
-#    fastapi
-#    uvicorn[standard]
-#    scikit-learn
-#    pandas
+fastapi==0.115.5
+uvicorn==0.32.1
+pandas==2.2.3
+scikit-learn==1.5.2
+joblib==1.4.2
+pydantic==2.10.3
+numpy==1.26.4
