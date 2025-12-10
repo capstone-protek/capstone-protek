@@ -1,0 +1,191 @@
+openapi: 3.0.0
+info:
+  title: Predictive Maintenance Copilot API
+  description: API Documentation for Capstone Project A25-CS050
+  version: 1.0.0
+  contact:
+    name: Backend Team (Faris)
+
+# URL SERVER (Update sesuai kebutuhan)
+servers:
+  - url: https://api-protek-production.up.railway.app
+    description: 🚀 Production Server (Railway)
+  - url: http://localhost:4000
+    description: 💻 Local Development
+
+tags:
+  - name: Dashboard
+    description: Ringkasan status sistem
+  - name: Prediction
+    description: Integrasi Machine Learning (Core Feature)
+  - name: Machines
+    description: Manajemen data mesin & sensor history
+  - name: Alerts
+    description: Notifikasi kerusakan
+
+paths:
+  # --- DASHBOARD ---
+  /api/dashboard/summary:
+    get:
+      summary: Get Dashboard Summary
+      tags: [Dashboard]
+      description: Mengambil total mesin, mesin kritis, alert hari ini, dan health score.
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  summary:
+                    type: object
+                    properties:
+                      totalMachines:
+                        type: integer
+                        example: 4
+                      criticalMachines:
+                        type: integer
+                        example: 1
+                      systemHealth:
+                        type: integer
+                        example: 85
+                  recentAlerts:
+                    type: array
+                    items:
+                      type: object
+
+  # --- PREDICTION (CORE FEATURE) ---
+  /api/predict:
+    post:
+      summary: Trigger Prediction (Simulasi Sensor)
+      tags: [Prediction]
+      description: >
+        Mengirim data sensor ke ML API. 
+        Jika ML mendeteksi kerusakan (CRITICAL), Backend akan otomatis membuat Alert baru di Database.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - Machine_ID
+                - Air_Temp
+                - Process_Temp
+                - RPM
+                - Torque
+                - Tool_Wear
+              properties:
+                Machine_ID:
+                  type: string
+                  description: ID Mesin sesuai Database (Case Sensitive)
+                  example: "M-14850"
+                Type:
+                  type: string
+                  description: Tipe kualitas produk (L/M/H)
+                  example: "L"
+                Air_Temp:
+                  type: number
+                  description: Suhu Udara [K]
+                  example: 305.5
+                Process_Temp:
+                  type: number
+                  description: Suhu Proses [K]
+                  example: 310.4
+                RPM:
+                  type: integer
+                  description: Kecepatan Putar [rpm]
+                  example: 1600
+                Torque:
+                  type: number
+                  description: Torsi [Nm]
+                  example: 65.5
+                Tool_Wear:
+                  type: integer
+                  description: Keausan Alat [min]
+                  example: 220
+      responses:
+        200:
+          description: Prediction Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  input_saved:
+                    type: boolean
+                    example: true
+                  alert_created:
+                    type: boolean
+                    description: True jika hasil prediksi adalah CRITICAL
+                    example: true
+                  ml_result:
+                    type: object
+                    properties:
+                      Status:
+                        type: string
+                        example: "⚠️ CRITICAL FAILURE DETECTED"
+                      Failure_Type:
+                        type: string
+                        example: "Power Failure"
+                      RUL_Status:
+                        type: string
+                        example: "🚨 CRITICAL"
+
+  # --- MACHINES ---
+  /api/machines:
+    get:
+      summary: List All Machines
+      tags: [Machines]
+      responses:
+        200:
+          description: Array of machines
+
+  /api/machines/{id}:
+    get:
+      summary: Get Machine Detail
+      tags: [Machines]
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+          description: Bisa ID Angka (1) atau Aset ID (M-14850)
+          example: "M-14850"
+      responses:
+        200:
+          description: Machine Detail Object
+        404:
+          description: Machine not found
+
+  /api/machines/{id}/history:
+    get:
+      summary: Get Sensor History (Grafik)
+      tags: [Machines]
+      description: Mengambil data sensor historis untuk grafik frontend.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Aset ID (e.g., M-14850)
+          example: "M-14850"
+      responses:
+        200:
+          description: Array of sensor readings (Time Series)
+
+  # --- ALERTS ---
+  /api/alerts:
+    get:
+      summary: List All Alerts
+      tags: [Alerts]
+      description: Mengambil riwayat alert/kerusakan yang tersimpan di DB.
+      responses:
+        200:
+          description: Array of alerts
