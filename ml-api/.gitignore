@@ -1,8 +1,45 @@
+# Python environment
 __pycache__/
 .venv/
+venv/
+env/
+ENV/
+.env
+
+# Model & Data files
 *.pkl
-!src/models/*.pkl
+*.joblib
+*.h5
+*.pth
 *.csv
-*.pyc
-.pytest_cache/
+!src/dataset/*.csv
+
+# IDE & Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+
+# Jupyter
 .ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Logs
+logs/
+*.log
+ml-api.log
+
+# Python cache
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+
+# OS
+.DS_Store
+Thumbs.db
