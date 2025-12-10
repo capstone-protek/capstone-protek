@@ -54,3 +54,19 @@ model SensorHistory {
   machine   Machine  @relation(fields: [machineId], references: [id])
 }
 
+
+model PredictionResult {
+  id        Int      @id @default(autoincrement())
+  
+  machineId Int      @map("machine_id")
+  
+  RUL       Float    @map("rul_minutes")
+  
+  failure_prob Float    
+  
+  prediction_time DateTime @default(now())
+  
+  status    String?
+  
+  @@map("prediction_results") 
+}
