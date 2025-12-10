@@ -1,3 +1,4 @@
+
 import asyncio
 import os
 from datetime import datetime
@@ -230,9 +231,10 @@ async def startup_event_unified():
     # 2. Load Data Simulasi (dari data_loader.py)
     DATA_SIMULASI = load_and_combine_data()
         
-    # 3. Create DB Pool
-    await create_pool()
-    print("Database pool berhasil dibuat.")
+    # 3. Create DB Pool (DISABLED for demo - no database required)
+    # await create_pool()
+    # print("Database pool berhasil dibuat.")
+    print("✅ API ready without database (demo mode)")
 
 @app.on_event("shutdown")
 async def shutdown_event_unified():
