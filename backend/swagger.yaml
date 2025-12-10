@@ -18,6 +18,8 @@ tags:
     description: Ringkasan status sistem
   - name: Prediction
     description: Integrasi Machine Learning (Core Feature)
+  - name: Simulation
+    description: Kontrol simulasi data realtime
   - name: Machines
     description: Manajemen data mesin & sensor history
   - name: Alerts
@@ -54,6 +56,99 @@ paths:
                     type: array
                     items:
                       type: object
+
+  # --- SIMULATION ---
+  /api/simulation/start:
+    post:
+      summary: Start Simulation
+      tags: [Simulation]
+      description: Memulai simulasi data realtime dari 40,000 baris data sintetis ke database
+      responses:
+        200:
+          description: Simulasi berhasil dimulai
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  message:
+                    type: string
+                    example: "Simulasi data realtime dimulai!"
+        400:
+          description: Simulasi sudah berjalan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "Simulasi sudah berjalan."
+
+  /api/simulation/stop:
+    get:
+      summary: Stop Simulation
+      tags: [Simulation]
+      description: Menghentikan simulasi yang sedang berjalan
+      responses:
+        200:
+          description: Simulasi berhasil dihentikan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  message:
+                    type: string
+                    example: "Simulasi berhasil dihentikan."
+        400:
+          description: Tidak ada simulasi yang berjalan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "Tidak ada simulasi yang berjalan."
+
+  /api/simulation/status:
+    get:
+      summary: Get Simulation Status
+      tags: [Simulation]
+      description: Mendapatkan status simulasi saat ini
+      responses:
+        200:
+          description: Status simulasi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  is_running:
+                    type: boolean
+                    example: true
+                  current_index:
+                    type: integer
+                    example: 1250
+                  total_records:
+                    type: integer
+                    example: 40000
+                  progress_percentage:
+                    type: number
+                    example: 3.125
 
   # --- PREDICTION (CORE FEATURE) ---
   /api/predict:

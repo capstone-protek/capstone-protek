@@ -1,4 +1,42 @@
-#    node_modules/
-#    dist/
-#    .env
-/src/generated/prisma
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+
+# Build output
+dist/
+build/
+*.tsbuildinfo
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE & Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime
+.prisma/
+prisma/migrations/dev.db*
+
+# Generated files
+/src/generated/
+
+# OS
+.DS_Store
+Thumbs.db

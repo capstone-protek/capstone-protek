@@ -10,6 +10,7 @@ import alertRoutes from './routes/alert.routes';
 import machineRoutes from './routes/machine.routes';
 import predictRoutes from './routes/predict.routes';
 import dashboardRoutes from './routes/dashboard.routes';
+import simulationRoutes from './routes/simulation.routes';
 
 const app = express();
 
@@ -30,5 +31,6 @@ app.use('/api/alerts', alertRoutes);
 app.use('/api/machines', machineRoutes);
 app.use('/api/predict', predictRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/simulation', simulationRoutes);
 
 export default app;

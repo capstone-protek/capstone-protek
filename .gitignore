@@ -1,19 +1,46 @@
 # OS & IDE
 .DS_Store
+Thumbs.db
 .vscode/
-*.env
-*.env.local
+.idea/
+*.swp
+*.swo
+*~
 
-# Dependensi
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Dependencies
 node_modules/
 .venv/
+venv/
 
 # Dataset & Model (JANGAN PERNAH COMMIT INI)
 /dataset/
-*.csv
-*.pkl
-*.h5
+**/*.csv
+**/*.pkl
+**/*.h5
+**/*.joblib
+**/*.pth
 
-# Log & Build
+# Logs & Build
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
 /dist/
+/build/
+
+# Runtime
+.prisma/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/
+
+# IDE Generated
+*.tsbuildinfo
+*.sublime-project
+*.sublime-workspace
