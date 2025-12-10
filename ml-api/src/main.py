@@ -251,7 +251,7 @@ def root():
     return {"message": "PROTEK AI Service is Running (SIMULATION ENABLED)!"}
 
 # --- 4. Endpoint Simulasi ---
-@app.post("/api/start-simulation")
+@app.post("/api/simulation/start")
 async def start_simulation():
     global SIMULATION_TASK, IS_RUNNING, SIMULATION_INDEX
     
@@ -267,7 +267,7 @@ async def start_simulation():
     
     return {"status": "success", "message": "Simulasi data realtime dimulai!"}
 
-@app.get("/api/stop-simulation")
+@app.get("/api/simulation/stop")
 async def stop_simulation():
     global SIMULATION_TASK, IS_RUNNING
     if SIMULATION_TASK and IS_RUNNING:
