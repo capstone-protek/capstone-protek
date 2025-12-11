@@ -1,47 +1,76 @@
 import { Request, Response } from 'express';
 
-// Base URL untuk ML API
-const ML_API_URL = process.env.ML_API_URL || 'http://localhost:8000';
+const ML_API_URL = process.env.ML_API_URL || 'https://capstone-protek-production.up.railway.app';
 
 /**
  * POST /api/simulation/start
- * Memulai simulasi dengan memanggil ML API
+ * Memulai simulasi.
+ * Bertindak sebagai TRIGGER. Body opsional (bisa kosong).
  */
 export async function startSimulation(req: Request, res: Response) {
   try {
-    const response = await fetch(`${ML_API_URL}/api/start-simulation`, {
+    const targetUrl = `${ML_API_URL}/api/simulation/start`;
+    console.log(`[Simulation] Starting... Target: ${targetUrl}`);
+
+    // Kita kirim req.body jika ada, jika tidak ada kirim object kosong {}
+    // Ini aman untuk sekedar trigger.
+    const payload = Object.keys(req.body).length > 0 ? req.body : {};
+
+    const response = await fetch(targetUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
+      body: JSON.stringify(payload),
     });
+
+    // Cek jika response bukan JSON (misal HTML error 404/500 dari server)
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+        const text = await response.text();
+        console.error(`[Simulation] Non-JSON response from ML API: ${text}`);
+        throw new Error(`ML API error (non-json): ${text.substring(0, 100)}...`); 
+    }
 
     const data = await response.json();
 
     if (response.ok) {
       return res.status(200).json(data);
     } else {
+      console.warn(`[Simulation] ML API returned error status: ${response.status}`);
       return res.status(response.status).json(data);
     }
   } catch (error: any) {
-    console.error('Error starting simulation:', error);
+    console.error('[Simulation] Error starting simulation:', error);
     return res.status(500).json({
       status: 'error',
-      message: 'Failed to start simulation',
+      message: 'Failed to trigger simulation start',
       error: error.message,
+      hint: 'Ensure ML_API_URL is correct and the Python endpoint exists.'
     });
   }
 }
 
 /**
  * GET /api/simulation/stop
- * Menghentikan simulasi dengan memanggil ML API
+ * Menghentikan simulasi.
  */
 export async function stopSimulation(req: Request, res: Response) {
   try {
-    const response = await fetch(`${ML_API_URL}/api/stop-simulation`, {
+    const targetUrl = `${ML_API_URL}/api/simulation/stop`;
+    console.log(`[Simulation] Stopping... Target: ${targetUrl}`);
+
+    const response = await fetch(targetUrl, {
       method: 'GET',
     });
+    
+    // Cek content type
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+       const text = await response.text();
+       console.error(`[Simulation] Non-JSON response from ML API: ${text}`);
+       return res.status(response.status).json({ message: text });
+    }
 
     const data = await response.json();
 
@@ -51,10 +80,10 @@ export async function stopSimulation(req: Request, res: Response) {
       return res.status(response.status).json(data);
     }
   } catch (error: any) {
-    console.error('Error stopping simulation:', error);
+    console.error('[Simulation] Error stopping simulation:', error);
     return res.status(500).json({
       status: 'error',
-      message: 'Failed to stop simulation',
+      message: 'Failed to trigger simulation stop',
       error: error.message,
     });
   }
@@ -62,16 +91,21 @@ export async function stopSimulation(req: Request, res: Response) {
 
 /**
  * GET /api/simulation/status
- * Mendapatkan status simulasi dari ML API
+ * Mendapatkan status simulasi
  */
 export async function getSimulationStatus(req: Request, res: Response) {
   try {
-    // Untuk saat ini, return status sederhana
-    // Nanti bisa ditambahkan endpoint di ML API untuk query status
+    // Opsional: Anda bisa uncomment ini jika nanti di Python sudah ada endpoint status
+    /*
+    const response = await fetch(`${ML_API_URL}/api/simulation-status`);
+    const data = await response.json();
+    return res.status(200).json(data);
+    */
+
     return res.status(200).json({
       status: 'success',
-      message: 'Status endpoint not yet implemented in ML API',
-      note: 'Check ML API logs for simulation progress',
+      message: 'Simulation functionality is ready (Trigger Mode)',
+      note: 'Ensure Python backend has /api/start-simulation endpoint'
     });
   } catch (error: any) {
     console.error('Error getting simulation status:', error);
