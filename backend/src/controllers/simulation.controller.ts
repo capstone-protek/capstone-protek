@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
 
+// Base URL ML dari env atau default
+// Pastikan tidak ada trailing slash '/' di sini untuk konsistensi
 const ML_API_URL = process.env.ML_API_URL || 'https://capstone-protek-production.up.railway.app';
 
 /**
@@ -12,9 +14,11 @@ export async function startSimulation(req: Request, res: Response) {
     const targetUrl = `${ML_API_URL}/api/simulation/start`;
     console.log(`[Simulation] Starting... Target: ${targetUrl}`);
 
-    // Kita kirim req.body jika ada, jika tidak ada kirim object kosong {}
-    // Ini aman untuk sekedar trigger.
-    const payload = Object.keys(req.body).length > 0 ? req.body : {};
+    // --- FIX: SAFE BODY CHECK ---
+    // Mencegah crash "Cannot convert undefined or null to object"
+    // jika req.body undefined (misal dari Swagger tanpa body)
+    const bodyData = req.body || {}; 
+    const payload = Object.keys(bodyData).length > 0 ? bodyData : {};
 
     const response = await fetch(targetUrl, {
       method: 'POST',
