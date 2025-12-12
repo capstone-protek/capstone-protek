@@ -2,7 +2,7 @@ import { Router } from "express";
 import { chatbotController } from "../controllers/chatbot.controller";
 
 const router = Router();
-
-router.post("/", chatbotController.askChat);
+// POST /api/chat
+router.post("/", chatbotController.askChat); // Akses: /api/chat
 
 export default router;

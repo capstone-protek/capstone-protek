@@ -93,4 +93,3 @@ model prediction_results {
   // Nama tabel di database
   @@map("prediction_results")
 }
-
