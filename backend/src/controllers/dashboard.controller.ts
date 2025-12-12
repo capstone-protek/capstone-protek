@@ -74,3 +74,40 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to fetch dashboard summary' });
   }
 };
+
+export const getDashboardTrend = async (req: Request, res: Response) => {
+  try {
+    // Ambil 20 data prediksi terakhir dari database
+    const history = await prisma.predictionResult.findMany({
+      take: 20,
+      orderBy: { prediction_time: 'desc' },
+      select: {
+        prediction_time: true,
+        failure_prob: true,
+        machineId: true
+      }
+    });
+
+    // Format data agar mudah dibaca Recharts di frontend
+    // Kita balik urutannya (reverse) agar grafik jalan dari kiri (lama) ke kanan (baru)
+    const chartData = history.reverse().map(item => ({
+      time: new Date(item.prediction_time).toLocaleTimeString('en-US', { 
+        hour12: false, 
+        hour: "2-digit", 
+        minute: "2-digit",
+        second: "2-digit"
+      }),
+      // Konversi probabilitas gagal (0.05) menjadi health score (95)
+      healthScore: Math.round(100 - ((item.failure_prob || 0) * 100)),
+      machineId: item.machineId
+    }));
+
+    res.json(chartData);
+
+  } catch (error) {
+    console.error("Error fetching trend:", error);
+    res.status(500).json({ error: "Failed to fetch trend data" });
+  }
+};
+
+// ... import prisma dan lain-lain

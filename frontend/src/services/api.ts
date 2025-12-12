@@ -26,6 +26,12 @@ interface SimulationResponse {
   is_running?: boolean; // Opsional, tergantung response backend
 }
 
+export interface TrendDataPoint {
+  time: string;
+  healthScore: number;
+  machineId: string;
+}
+
 export const simulationService = {
   // 1. Start Simulasi
   start: async () => {
@@ -51,6 +57,11 @@ export const dashboardService = {
   getSummary: async () => {
     // Sesuai Swagger: GET /api/dashboard/summary
     const response = await api.get<DashboardSummaryResponse>("/dashboard/summary");
+    return response.data;
+  },
+
+  getTrend: async () => {
+    const response = await api.get<TrendDataPoint[]>("/dashboard/trend");
     return response.data;
   },
 

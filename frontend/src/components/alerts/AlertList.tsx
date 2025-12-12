@@ -56,7 +56,7 @@ export function AlertList() {
         // Backend mengembalikan { alerts: [...] } atau array langsung
         const alertsArray = Array.isArray(data) 
           ? data 
-          : (data as any)?.alerts || [];
+          : (data as data)?.alerts || [];
         setAlerts(alertsArray);
       })
       .catch((error) => {

@@ -5,13 +5,13 @@
  * Pada production, data akan diambil dari API Backend
  */
 import type {
-  Alert,
-  DashboardSummary,
-  MachineSummary,
-  MachineDetails,
+  AlertData,
+  DashboardSummaryResponse,
+  MachineDetailResponse,
+  MachineStatus,
 } from "@/types";
 
-export const mockAlerts: Alert[] = [
+export const mockAlerts: AlertData[] = [
   {
     id: "alert-001",
     asetId: "M-14850",
@@ -28,7 +28,7 @@ export const mockAlerts: Alert[] = [
     },
   },
   {
-    id: "alert-002",
+    alertId: "alert-002",
     asetId: "M-15200",
     timestamp: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
     diagnosis: "Overheat",
