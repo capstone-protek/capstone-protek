@@ -54,19 +54,42 @@ model SensorHistory {
   machine   Machine  @relation(fields: [machineId], references: [id])
 }
 
+// Model 4: sensor_data (sesuai dari API ML)
+model sensor_data {
 
-model PredictionResult {
-  id        Int      @id @default(autoincrement())
+  // Kolom ID
+  id                    Int       @id @default(autoincrement())
   
-  machineId Int      @map("machine_id")
-  
-  RUL       Float    @map("rul_minutes")
-  
-  failure_prob Float    
-  
-  prediction_time DateTime @default(now())
-  
-  status    String?
-  
-  @@map("prediction_results") 
+  // Kolom Sensor
+  machine_id            Int
+  type                  String    // Type (L, M, H)
+  air_temperature_K     Float     
+  process_temperature_K Float   
+  rotational_speed_rpm  Int      
+  torque_Nm             Float     
+  tool_wear_min         Int       
+
+  // Kolom Timestamp
+  insertion_time        DateTime  @default(now())
+
+  // Nama tabel di database
+  @@map("sensor_data") 
+}
+
+// Model 5: prediction_results (sesuai dari API ML)
+model prediction_results {
+  id                Int       @id @default(autoincrement())
+  prediction_time   DateTime  @default(now()) // Waktu prediksi
+  machine_id        String    // Machine_ID (cth: M-14850)
+  risk_probability  String    // Risk_Probability (cth: "78.3%")
+  rul_estimate      String    // RUL_Estimate (cth: "0 Menit Lagi")
+  rul_status        String    // RUL_Status (cth: "🚨 CRITICAL")
+  rul_minutes_val   Float     // RUL_Minutes (Nilai numerik 0, 162, dsb)
+  pred_status       String    // Status (cth: "⚠️ CRITICAL FAILURE DETECTED")
+  failure_type      String    // Failure_Type (cth: "Power Failure")
+  action            String    // Action (cth: "Cek tegangan listrik...")
+  urgency           String    // Urgency (cth: "🚨 SANGAT MENDESAK...")
+
+  // Nama tabel di database
+  @@map("prediction_results")
 }

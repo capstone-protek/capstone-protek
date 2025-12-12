@@ -46,7 +46,7 @@ async def perform_feature_engineering(row: Dict[str, Any]):
     """Mengambil data historis relevan dan menghitung fitur turunan."""
 
     data_sql = """
-        SELECT "Tool wear [min]", "Torque [Nm]", "Rotational speed [rpm]"
+        SELECT tool_wear_min, torque_nm, rotational_speed_rpm
         FROM sensor_data
         WHERE machine_id = $1
         ORDER BY insertion_time DESC
@@ -64,18 +64,18 @@ async def perform_feature_engineering(row: Dict[str, Any]):
             "latest_torque": row["Torque [Nm]"],
         }
 
-    torque_data = [float(record["Torque [Nm]"]) for record in history]
+    torque_data = [float(record["torque_nm"]) for record in history]
     rolling_torque_avg = sum(torque_data) / len(torque_data)
     latest = history[0]
 
     return {
-        "Machine_ID": str(machine_id),
+        "Machine_ID": machine_id,
         "Type": row["Type"],
         "Air_Temp": row["Air temperature [K]"],
         "Process_Temp": row["Process temperature [K]"],
         "RPM": row["Rotational speed [rpm]"],
-        "Torque": float(latest["Torque [Nm]"]),
-        "Tool_Wear": float(latest["Tool wear [min]"]),
+        "Torque": float(latest["torque_nm"]),
+        "Tool_Wear": float(latest["tool_wear_min"]),
         "rolling_torque_avg": rolling_torque_avg,
     }
 
@@ -84,9 +84,9 @@ async def insert_sensor_row(row: Dict[str, Any]):
     """Sisipkan data sensor mentah dan kembalikan insertion_time."""
 
     sql_insert = """
-        INSERT INTO sensor_data (machine_id, "Type", "Air temperature [K]",
-            "Process temperature [K]", "Rotational speed [rpm]", "Torque [Nm]",
-            "Tool wear [min]")
+        INSERT INTO sensor_data (machine_id, type, air_temperature_k,
+            process_temperature_k, rotational_speed_rpm, torque_nm,
+            tool_wear_min)
         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING insertion_time;
     """
 
@@ -121,7 +121,23 @@ def extract_prediction_metrics(prediction_result: Dict[str, Any], fallback_row: 
     except Exception:
         rul_minutes = 0.0
 
-    return machine_id, risk_str, risk_val, rul_estimate, rul_status, rul_minutes
+    status_text = prediction_result.get("Status", "")
+    failure_type = prediction_result.get("Failure_Type", "")
+    action = prediction_result.get("Action", "")
+    urgency = prediction_result.get("Urgency", "")
+
+    return (
+        machine_id,
+        risk_str,
+        risk_val,
+        rul_estimate,
+        rul_status,
+        rul_minutes,
+        status_text,
+        failure_type,
+        action,
+        urgency,
+    )
 
 
 def log_prediction(machine_id: Any, risk_str: str, rul_estimate: str, rul_status: str, rul_minutes: float):
@@ -150,20 +166,46 @@ async def run_simulation_loop():
 
             # 3) Prediksi (Inference)
             prediction_result = ai_engine.make_prediction(features_for_prediction)
-            machine_id, risk_str, risk_val, rul_estimate, rul_status, rul_minutes = (
-                extract_prediction_metrics(prediction_result, row)
-            )
+            (
+                machine_id,
+                risk_str,
+                risk_val,
+                rul_estimate,
+                rul_status,
+                rul_minutes,
+                status_text,
+                failure_type,
+                action_text,
+                urgency_text,
+            ) = extract_prediction_metrics(prediction_result, row)
 
             # 4) Simpan hasil prediksi
             sql_predict = """
-                INSERT INTO prediction_results (machine_id, RUL, failure_prob, prediction_time)
-                VALUES ($1, $2, $3, $4);
+                INSERT INTO prediction_results (
+                    machine_id,
+                    risk_probability,
+                    rul_estimate,
+                    rul_status,
+                    rul_minutes_val,
+                    pred_status,
+                    failure_type,
+                    action,
+                    urgency,
+                    prediction_time
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);
             """
             await execute_query(
                 sql_predict,
-                machine_id,
+                str(machine_id),
+                risk_str,
+                rul_estimate,
+                rul_status,
                 rul_minutes,
-                risk_val,
+                status_text,
+                failure_type,
+                action_text,
+                urgency_text,
                 insertion_time,
             )
 
@@ -230,9 +272,10 @@ async def startup_event_unified():
     # 2. Load Data Simulasi (dari data_loader.py)
     DATA_SIMULASI = load_and_combine_data()
         
-    # 3. Create DB Pool
-    await create_pool()
-    print("Database pool berhasil dibuat.")
+    # 3. Create DB Pool (DISABLED for demo - no database required)
+    # await create_pool()
+    # print("Database pool berhasil dibuat.")
+    print("✅ API ready without database (demo mode)")
 
 @app.on_event("shutdown")
 async def shutdown_event_unified():
@@ -249,7 +292,7 @@ def root():
     return {"message": "PROTEK AI Service is Running (SIMULATION ENABLED)!"}
 
 # --- 4. Endpoint Simulasi ---
-@app.post("/api/start-simulation")
+@app.post("/api/simulation/start")
 async def start_simulation():
     global SIMULATION_TASK, IS_RUNNING, SIMULATION_INDEX
     
@@ -265,7 +308,7 @@ async def start_simulation():
     
     return {"status": "success", "message": "Simulasi data realtime dimulai!"}
 
-@app.get("/api/stop-simulation")
+@app.get("/api/simulation/stop")
 async def stop_simulation():
     global SIMULATION_TASK, IS_RUNNING
     if SIMULATION_TASK and IS_RUNNING:

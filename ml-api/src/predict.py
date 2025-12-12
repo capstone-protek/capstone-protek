@@ -1,3 +1,4 @@
+
 import pandas as pd
 import joblib
 import os
@@ -5,18 +6,31 @@ import os
 class MaintenanceModel:
     def __init__(self):
         self.artifacts = None
-        # Menggunakan path absolut agar tidak bingung posisi folder
+        # models folder is in src/models/, not at project root
         base_path = os.path.dirname(os.path.abspath(__file__))
         self.model_path = os.path.join(base_path, "models", "maintenance_brain.pkl")
+        
+        print(f"🔍 [Init] Model path: {self.model_path}")
 
     def load_artifacts(self):
         """Mencoba memuat model dari file .pkl"""
         if os.path.exists(self.model_path):
-            self.artifacts = joblib.load(self.model_path)
-            print(f"✅ [Predict Logic] Model loaded from: {self.model_path}")
-            return True
+            try:
+                self.artifacts = joblib.load(self.model_path)
+                print(f"✅ [Predict Logic] Model loaded from: {self.model_path}")
+                
+                # Debug: Print available keys
+                if isinstance(self.artifacts, dict):
+                    print(f"📋 Available keys in model: {list(self.artifacts.keys())}")
+                
+                return True
+            except Exception as e:
+                print(f"❌ [Error] Failed to load model: {e}")
+                return False
         else:
             print(f"❌ [Error] File not found at: {self.model_path}")
+            print(f"🔍 Current directory: {os.getcwd()}")
+            print(f"📁 Please ensure model file exists at: {self.model_path}")
             return False
 
     def make_prediction(self, input_data: dict):
@@ -60,24 +74,45 @@ class MaintenanceModel:
         }
         input_df = input_df.rename(columns=rename_dict)
 
-        # Validasi artifacts
-        required_keys = ['features_status', 'features_type', 'features_rul', 'scaler', 
-                        'scaler_rul', 'scaler_type', 'model_status', 'model_rul', 
-                        'model_type', 'le_type']
-        missing_keys = [key for key in required_keys if key not in self.artifacts]
+        # Validasi artifacts (flexible untuk backward compatibility)
+        # Only check critical keys
+        required_keys_status = ['features_status', 'scaler', 'model_status']
+        missing_keys = [key for key in required_keys_status if key not in self.artifacts]
+        
         if missing_keys:
-            raise Exception(f"Format Model Salah: Key berikut tidak ditemukan dalam .pkl: {missing_keys}")
+            raise Exception(f"❌ Model tidak valid. Missing critical keys: {missing_keys}")
+        
+        # Check optional keys (for enhanced features)
+        has_rul_model = 'model_rul' in self.artifacts and 'features_rul' in self.artifacts
+        has_type_model = 'model_type' in self.artifacts and 'features_type' in self.artifacts
+        
+        if not has_rul_model:
+            print("⚠️ RUL model not found. Will use rule-based estimation.")
+        if not has_type_model:
+            print("⚠️ Failure type model not found. Will use rule-based detection.")
 
         # ==========================================
-        # 2. ENHANCED RUL PREDICTION (ML-based)
+        # 2. ENHANCED RUL PREDICTION (ML-based or fallback)
         # ==========================================
-        # Prepare features for RUL model
-        X_input_rul = input_df[self.artifacts['features_rul']]
-        X_scaled_rul = self.artifacts['scaler_rul'].transform(X_input_rul)
-        
-        # Predict RUL using regression model
-        remaining_mins = self.artifacts['model_rul'].predict(X_scaled_rul)[0]
-        remaining_mins = max(0, remaining_mins)  # Ensure non-negative
+        if has_rul_model:
+            # Use ML-based RUL prediction
+            try:
+                X_input_rul = input_df[self.artifacts['features_rul']]
+                
+                # Check if separate scaler exists for RUL
+                if 'scaler_rul' in self.artifacts:
+                    X_scaled_rul = self.artifacts['scaler_rul'].transform(X_input_rul)
+                else:
+                    X_scaled_rul = self.artifacts['scaler'].transform(X_input_rul)
+                
+                remaining_mins = self.artifacts['model_rul'].predict(X_scaled_rul)[0]
+                remaining_mins = max(0, remaining_mins)
+            except Exception as e:
+                print(f"⚠️ RUL prediction error: {e}. Using fallback method.")
+                remaining_mins = self._calculate_rul_fallback(input_data)
+        else:
+            # Fallback: Rule-based RUL estimation
+            remaining_mins = self._calculate_rul_fallback(input_data)
         
         hours_left = remaining_mins / 60
 
@@ -149,3 +184,54 @@ class MaintenanceModel:
                 result['Urgency'] = "⚠️ MENDESAK - Maintenance diperlukan dalam 1 jam!"
 
         return result
+
+    def _calculate_rul_fallback(self, input_df: pd.DataFrame) -> tuple:
+        """
+        Fallback RUL calculation using rule-based estimation when ML model unavailable.
+        Based on tool wear, temperature, and rotational speed.
+        
+        Returns:
+            tuple: (hours_remaining, minutes_remaining)
+        """
+        try:
+            # Extract key features
+            tool_wear = input_df['Tool wear [min]'].values[0] if 'Tool wear [min]' in input_df else 0
+            temp_k = input_df['Process temperature [K]'].values[0] if 'Process temperature [K]' in input_df else 298
+            rpm = input_df['Rotational speed [rpm]'].values[0] if 'Rotational speed [rpm]' in input_df else 1500
+            torque = input_df['Torque [Nm]'].values[0] if 'Torque [Nm]' in input_df else 40
+            
+            # Rule-based RUL estimation
+            # Tool wear baseline: typically fails around 200-240 minutes
+            max_tool_wear = 240
+            wear_factor = max(0, (max_tool_wear - tool_wear) / max_tool_wear)
+            
+            # Temperature stress factor (higher temp = faster degradation)
+            temp_stress = max(0, min(1, (temp_k - 295) / 15))  # Normalize around 295-310K range
+            temp_factor = 1 - (temp_stress * 0.3)  # Up to 30% reduction for high temp
+            
+            # RPM stress factor (extreme RPM = faster wear)
+            rpm_stress = 0
+            if rpm < 1200:  # Too slow
+                rpm_stress = (1200 - rpm) / 1200 * 0.2
+            elif rpm > 2400:  # Too fast
+                rpm_stress = (rpm - 2400) / 1000 * 0.2
+            rpm_factor = 1 - min(0.3, rpm_stress)
+            
+            # Torque stress factor
+            torque_stress = max(0, (torque - 40) / 40 * 0.2)  # Baseline at 40 Nm
+            torque_factor = 1 - min(0.2, torque_stress)
+            
+            # Combined estimation
+            base_hours = 8  # Baseline hours of operation
+            estimated_hours = base_hours * wear_factor * temp_factor * rpm_factor * torque_factor
+            
+            # Ensure minimum and maximum bounds
+            estimated_hours = max(0.5, min(24, estimated_hours))
+            estimated_mins = int(estimated_hours * 60)
+            
+            return int(estimated_hours), estimated_mins
+            
+        except Exception as e:
+            print(f"⚠️ [RUL Fallback] Error in calculation: {e}")
+            # Return conservative estimate
+            return 4, 240
