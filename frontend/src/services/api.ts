@@ -1,112 +1,91 @@
-import type {
-  Alert,
-  DashboardSummary,
-  MachineSummary,
-  MachineDetails,
-  SensorHistory,
-  PredictRequestBodyFE,
-  PredictResponseBodyFE,
-  ChatResponseBody,
-} from "@/types";
+// frontend/src/services/api.ts
+import axios from "axios";
+import type { 
+  DashboardSummaryResponse, 
+  MachineDetailResponse, 
+  SensorHistoryData,
+  AlertData,
+  PredictPayload,
+  PredictResponseFE
+} from "../types";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+// Gunakan URL Railway Anda jika di production, atau localhost saat dev
+const API_URL = import.meta.env.VITE_API_URL || "https://api-protek-production.up.railway.app/api";
 
-/**
- * Helper function untuk membuat API requests
- */
-async function fetchAPI<T>(
-  endpoint: string,
-  options?: RequestInit
-): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    headers: {
-      "Content-Type": "application/json",
-      ...options?.headers,
-    },
-    ...options,
-  });
+const api = axios.create({
+  baseURL: API_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
 
-  if (!response.ok) {
-    throw new Error(`API Error: ${response.statusText}`);
-  }
-
-  return response.json() as Promise<T>;
+// Tambahkan Interface untuk Response Simulasi
+interface SimulationResponse {
+  status: "success" | "error";
+  message: string;
+  is_running?: boolean; // Opsional, tergantung response backend
 }
 
-/**
- * DASHBOARD ENDPOINTS
- */
-export const dashboardAPI = {
-  /**
-   * GET /api/dashboard/summary
-   * Mengambil ringkasan dashboard
-   */
-  getSummary: () => fetchAPI<DashboardSummary>("/dashboard/summary"),
+export const simulationService = {
+  // 1. Start Simulasi
+  start: async () => {
+    const response = await api.post<SimulationResponse>("/simulation/start");
+    return response.data;
+  },
+
+  // 2. Stop Simulasi
+  stop: async () => {
+    // Note: Di dokumentasi backend pakai GET, tapi kalau nanti diubah ke POST sesuaikan saja
+    const response = await api.get<SimulationResponse>("/simulation/stop");
+    return response.data;
+  },
+
+  // 3. Cek Status (PENTING: Agar tombol tahu harus warna Merah atau Hijau)
+  getStatus: async () => {
+    const response = await api.get<{ is_running: boolean }>("/simulation/status");
+    return response.data;
+  }
 };
 
-/**
- * ALERTS ENDPOINTS
- */
-export const alertsAPI = {
-  /**
-   * GET /api/alerts
-   * Mengambil semua peringatan
-   */
-  getAll: () => fetchAPI<Alert[]>("/alerts"),
+export const dashboardService = {
+  getSummary: async () => {
+    // Sesuai Swagger: GET /api/dashboard/summary
+    const response = await api.get<DashboardSummaryResponse>("/dashboard/summary");
+    return response.data;
+  },
 
-  /**
-   * GET /api/alerts/:id
-   * Mengambil detail peringatan tertentu
-   */
-  getById: (id: string) => fetchAPI<Alert>(`/alerts/${id}`),
+  getMachines: async () => {
+    const response = await api.get<MachineDetailResponse[]>("/machines");
+    return response.data;
+  },
+
+  getMachineDetail: async (asetId: string) => {
+    const response = await api.get<MachineDetailResponse>(`/machines/${asetId}`);
+    return response.data;
+  },
+
+  getHistory: async (asetId: string) => {
+    const response = await api.get<SensorHistoryData[]>(`/machines/${asetId}/history`);
+    return response.data;
+  },
+
+  getAlerts: async () => {
+    const response = await api.get<{ alerts: AlertData[] } | AlertData[]>(`/alerts`);
+    // Backend mengembalikan { alerts: [...] } atau array langsung
+    const data = response.data;
+    return Array.isArray(data) ? data : data.alerts;
+  },
+
+  getAlertDetail: async (alertId: number) => {
+    const response = await api.get<AlertData>(`/alerts/${alertId}`);
+    return response.data;
+  },
+
+  getPredict: async (payload: PredictPayload) => {
+    const response = await api.post<PredictResponseFE>(`/predict`, payload);
+    return response.data;
+  },
+
 };
 
-/**
- * MACHINES ENDPOINTS
- */
-export const machinesAPI = {
-  /**
-   * GET /api/machines
-   * Mengambil daftar semua mesin (ringkasan)
-   */
-  getAll: () => fetchAPI<MachineSummary[]>("/machines"),
-
-  /**
-   * GET /api/machines/:id
-   * Mengambil detail mesin tertentu
-   */
-  getById: (id: string) => fetchAPI<MachineDetails>(`/machines/${id}`),
-
-  /**
-   * GET /api/machines/:id/history
-   * Mengambil riwayat sensor untuk mesin tertentu
-   */
-  getHistory: (id: string) => fetchAPI<SensorHistory>(`/machines/${id}/history`),
-};
-
-/**
- * PREDICTION ENDPOINTS
- */
-export const predictAPI = {
-  /**
-   * POST /api/predict
-   * Mengirim data sensor untuk prediksi kegagalan mesin
-   */
-  predict: (data: PredictRequestBodyFE) =>
-    fetchAPI<PredictResponseBodyFE>("/predict", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
-};
-
-/**
- * CHAT ENDPOINTS
- */
-export const chatAPI = {
-  /**
-   * GET /api/chat?q=...
-   * Mengirim pertanyaan ke chatbot sederhana
-   */
-  chat: (query: string) =>
-    fetchAPI<ChatResponseBody>(`/chat?q=${encodeURIComponent(query)}`),
-};
+export default api;

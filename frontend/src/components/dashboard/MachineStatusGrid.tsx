@@ -3,8 +3,9 @@ import { ArrowRight, AlertTriangle, CheckCircle, XCircle, CircleQuestionMark } f
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { mockMachines as machines } from "@/data/mockData";
-import type { MachineStatus } from "@/types";
+import { useQuery } from "@tanstack/react-query";
+import { dashboardService } from "@/services/api";
+import type { MachineStatus, MachineDetailResponse } from "@/types";
 import { cn } from "@/lib/utils";
 
 const statusConfig: Record<MachineStatus, { icon: typeof AlertTriangle; label: string; className: string }> = {
@@ -22,6 +23,50 @@ function getHealthColor(score: number): string {
 }
 
 export function MachineStatusGrid() {
+  const { data: machines = [], isLoading, error } = useQuery<MachineDetailResponse[]>({
+    queryKey: ['machines'],
+    queryFn: () => dashboardService.getMachines(),
+  });
+
+  if (isLoading) {
+    return (
+      <Card className="shadow-lg border-2 border-primary/10">
+        <CardHeader>
+          <CardTitle className="text-xl font-bold text-foreground">Machine Status Overview</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8 text-muted-foreground">Loading machines...</div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="shadow-lg border-2 border-primary/10">
+        <CardHeader>
+          <CardTitle className="text-xl font-bold text-foreground">Machine Status Overview</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8 text-destructive">Error loading machines. Please try again.</div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (machines.length === 0) {
+    return (
+      <Card className="shadow-lg border-2 border-primary/10">
+        <CardHeader>
+          <CardTitle className="text-xl font-bold text-foreground">Machine Status Overview</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8 text-muted-foreground">No machines found.</div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="shadow-lg border-2 border-primary/10 hover:shadow-xl hover:border-primary/20 transition-all bg-white">
       <CardHeader className="pb-4 border-b border-border/50">

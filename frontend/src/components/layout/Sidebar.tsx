@@ -6,7 +6,7 @@ import logo from "@/assets/protek-logo.svg";
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Alerts", href: "/alerts", icon: AlertTriangle },
-  { name: "Machines", href: "/machines:id", icon: Activity },
+  { name: "Machines", href: "/machines", icon: Activity },
   { name: "Copilot", href: "/chat", icon: MessageSquare },
   { name: "Settings", href: "/settings", icon: Settings },
 ];

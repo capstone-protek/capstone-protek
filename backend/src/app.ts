@@ -10,8 +10,6 @@ import alertRoutes from './routes/alert.routes';
 import machineRoutes from './routes/machine.routes';
 import predictRoutes from './routes/predict.routes';
 import dashboardRoutes from './routes/dashboard.routes';
-
-// ✅ Keep dua-duanya karena fitur baru
 import simulationRoutes from './routes/simulation.routes';
 import chatRoutes from './routes/chat.routes';
 
@@ -28,8 +26,6 @@ app.use('/api/alerts', alertRoutes);
 app.use('/api/machines', machineRoutes);
 app.use('/api/predict', predictRoutes);
 app.use('/api/dashboard', dashboardRoutes);
-
-// ✅ Pasang dua-duanya
 app.use('/api/simulation', simulationRoutes);
 app.use('/api/chat', chatRoutes);
 
