@@ -1,8 +1,12 @@
-// src/services/chatbot.service.ts
+import 'dotenv/config';
+
 import { PrismaClient } from "@prisma/client";
 import { ChatOpenAI } from "@langchain/openai";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
-import 'dotenv/config';
+
+console.log("DEBUG ENV CHECK:");
+console.log("API Key exist?", !!process.env.OPENAI_API_KEY); // Harusnya true
+console.log("Model Name:", process.env.BIZNETGIO_MODEL_NAME);
 
 const prisma = new PrismaClient();
 
@@ -10,7 +14,7 @@ const prisma = new PrismaClient();
 const biznetBaseURL = process.env.BIZNETGIO_ENDPOINT?.replace('/chat/completions', '') || 'https://api.biznetgio.ai/v1';
 
 const chatModel = new ChatOpenAI({
-  openAIApiKey: process.env.BIZNETGIO_API_KEY,
+  openAIApiKey: process.env.OPENAI_API_KEY,
   modelName: process.env.BIZNETGIO_MODEL_NAME || "openai/gpt-oss-120b",
   temperature: 0,
   configuration: {
@@ -27,13 +31,14 @@ class ChatbotService {
 
     // 1. Ambil Data Mesin
     const machines = await prisma.machine.findMany({
-      select: { asetId: true, name: true, status: true }
+      select: { id: true, asetId: true, name: true, status: true }
     });
 
-    // 2. Ambil Prediksi ML Terakhir (Raw Data dari Tabel prediction_results)
-    // Kita ambil 10 data terakhir untuk memastikan kita dapat data terbaru semua mesin
-    const rawPredictions = await prisma.predictionResult.findMany({
-      take: 10,
+    // 2. Ambil Prediksi ML Terakhir
+    // ✅ PERBAIKAN 1: Gunakan 'predictionResult' (camelCase), bukan 'prediction_results'
+    // Error message TS2551 tadi menyarankan ini.
+    const rawPredictions = await prisma.prediction_results.findMany({
+      take: 20, 
       orderBy: { prediction_time: 'desc' }
     });
 
@@ -42,27 +47,31 @@ class ChatbotService {
       where: { severity: "CRITICAL" },
       take: 3,
       orderBy: { timestamp: 'desc' },
-      include: { machine: { select: { name: true } } } // Include nama mesin biar AI paham
+      include: { machine: { select: { name: true } } }
     });
 
-    // 4. Ambil semua mesin dengan ID untuk matching
-    const machinesWithId = await prisma.machine.findMany({
-      select: { id: true, asetId: true, name: true, status: true }
-    });
+    // 4. Data Processing: Gabungkan Info Mesin dengan Prediksi ML
+    const machineHealthSummary = machines.map(m => {
+      // ✅ PERBAIKAN 2: Typo variabel di .find()
+      // Sebelumnya: .find(m => p.machine_id ...) <- 'p' tidak dikenal
+      // Sekarang:   .find(p => p.machine_id ...) <- 'p' didefinisikan sebagai parameter
+      const prediction = rawPredictions.find(p => p.machine_id === m.asetId);
 
-    // 5. Data Processing: Gabungkan Info Mesin dengan Prediksi ML
-    // Agar AI lebih mudah membaca, kita gabungkan datanya per mesin
-    const machineHealthSummary = machinesWithId.map(m => {
-      // Cari prediksi yang cocok dengan ID Mesin (machineId di prediction adalah Int, bukan asetId)
-      const prediction = rawPredictions.find((p: { machineId: number }) => p.machineId === m.id);
+      let mlData = "Belum ada data ML";
+      
+      if (prediction) {
+        mlData = {
+          sisa_umur_rul: `${Math.round(prediction.rul_minutes_val)} menit`, 
+          risiko_kerusakan: prediction.risk_probability, 
+          status_prediksi: prediction.pred_status
+        } as any;
+      }
+
       return {
         mesin: m.name,
         kode: m.asetId,
         status_saat_ini: m.status,
-        prediksi_ml: prediction ? {
-          sisa_umur_rul: `${Math.round(prediction.RUL)} menit`, // Bulatkan agar mudah dibaca
-          risiko_kerusakan: `${(prediction.failure_prob * 100).toFixed(1)}%` // Format persen
-        } : "Belum ada data ML"
+        prediksi_ml: mlData
       };
     });
 
@@ -79,18 +88,18 @@ class ChatbotService {
     })), null, 2)}
     `;
 
-    // 6. System Prompt yang Dipertajam
+    // 6. System Prompt
     const systemPrompt = `
     Anda adalah Protek Copilot, asisten AI untuk monitoring pabrik.
     
     TUGAS:
-    Jawab pertanyaan user berdasarkan data [STATUS KESEHATAN MESIN TERKINI] di atas.
+    Jawab pertanyaan user secara singkat dan padat berdasarkan data [STATUS KESEHATAN MESIN TERKINI].
     
     PEDOMAN ANALISIS:
-    1. Jika field 'risiko_kerusakan' > 50%, katakan mesin BERISIKO TINGGI.
+    1. Jika 'risiko_kerusakan' > 50%, katakan mesin BERISIKO TINGGI.
     2. Jika 'sisa_umur_rul' < 60 menit, sarankan MAINTENANCE SEGERA.
-    3. Jika status 'CRITICAL', beri peringatan dengan emoji 🚨.
-    4. Jawab langsung ke poin permasalahannya. Gunakan Bahasa Indonesia.
+    3. Jika status 'CRITICAL', beri peringatan 🚨.
+    4. Gunakan Bahasa Indonesia.
 
     Data Konteks:
     ${contextData}
@@ -104,8 +113,7 @@ class ChatbotService {
 
     return {
       reply: response.content,
-      // Kirim data mentah juga untuk kebutuhan debug di frontend (opsional)
-      debug_context: machineHealthSummary
+      debug_match: machineHealthSummary.slice(0, 2) 
     };
   }
 }
