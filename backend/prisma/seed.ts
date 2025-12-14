@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, MachineStatus } from '@prisma/client';
 import { SYNTHETIC_DATA } from '../src/data/syntheticData';
 
 const prisma = new PrismaClient();
@@ -6,7 +6,8 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Start seeding...');
 
-  // 1. Bersihkan Data Lama (Biar tidak duplikat/error)
+  // Hapus data terkait dulu (hindari constraint FK)
+  await prisma.sensor_data.deleteMany();
   await prisma.alerts.deleteMany();
   await prisma.machines.deleteMany();
 
@@ -15,52 +16,50 @@ async function main() {
   // ==========================================
   // 2. DATA UTAMA (WAJIB untuk SIMULASI ML)
   // ==========================================
-  const mainMachine = await prisma.machine.create({
+  const mainMachine = await prisma.machines.create({
     data: {
-      id: 1, // ✨ WAJIB ID 1 agar sinkron dengan Python script
-      asetId: 'M-14850',
+      // ID auto, tapi kita pastikan aset_id sama dengan yang dipakai di ML
+      aset_id: 'M-14850',
       name: 'CNC Milling Machine - Main Simulation',
       status: 'HEALTHY',
     },
   });
-  console.log(`✅ Created Main Simulation Machine: ${mainMachine.asetId} (ID: 1)`);
+  console.log(`✅ Created Main Simulation Machine: ${mainMachine.aset_id}`);
 
-  // Seeding History untuk Mesin Utama (Pakai Data Pintar/Sintetis)
-  console.log('⏳ Seeding sensor history for Main Machine...');
+  // Seeding sensor_data untuk Mesin Utama menggunakan SYNTHETIC_DATA
+  console.log('⏳ Seeding sensor_data for Main Machine...');
   for (const row of SYNTHETIC_DATA) {
-    await prisma.sensorHistory.createMany({
-      data: [
-        { machineId: mainMachine.id, type: 'Air_Temp', value: row.Air_Temp },
-        { machineId: mainMachine.id, type: 'Process_Temp', value: row.Process_Temp },
-        { machineId: mainMachine.id, type: 'RPM', value: row.RPM },
-        { machineId: mainMachine.id, type: 'Torque', value: row.Torque },
-        { machineId: mainMachine.id, type: 'Tool_Wear', value: row.Tool_Wear },
-      ],
+    await prisma.sensor_data.create({
+      data: {
+        machine_id: mainMachine.aset_id,
+        type: 'synthetic',
+        air_temperature_k: Number(row.Air_Temp),
+        process_temperature_k: Number(row.Process_Temp),
+        rotational_speed_rpm: Number(row.RPM),
+        torque_nm: Number(row.Torque),
+        tool_wear_min: Number(row.Tool_Wear),
+      },
     });
   }
 
   // ==========================================
   // 3. DATA TAMBAHAN (Untuk Pemanis Dashboard)
   // ==========================================
-  const otherMachines = [
-    { asetId: "M-33011", name: "Grinding Station 04", status: "HEALTHY" },
-    { asetId: "M-18096", name: "Hydraulic Press B2", status: "WARNING" },
-    { asetId: "M-20232", name: "Drill Press X1", status: "HEALTHY" }
+  const otherMachines: { asetId: string; name: string; status: MachineStatus }[] = [
+    { asetId: 'M-33011', name: 'Grinding Station 04', status: 'HEALTHY' },
+    { asetId: 'M-18096', name: 'Hydraulic Press B2', status: 'WARNING' },
+    { asetId: 'M-20232', name: 'Drill Press X1', status: 'HEALTHY' },
   ];
 
-  // 3. Masukkan ke Database
-  for (const m of machinesData) {
+  for (const m of otherMachines) {
     const machine = await prisma.machines.create({
       data: {
         aset_id: m.asetId,
         name: m.name,
-        // @ts-ignore
-        status: m.status
-      }
+        status: m.status,
+      },
     });
     console.log(`✅ Created machine: ${machine.aset_id}`);
-
-    // Sensor history dihapus (tidak digunakan)
   }
 
   console.log('✅ Seeding finished successfully.');
