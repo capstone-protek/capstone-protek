@@ -32,13 +32,24 @@ export const predictMaintenance = async (req: Request, res: Response) => {
     // 3. Kirim Data ke ML API (Railway)
     console.log(`   📡 Sending to ML API...`);
     
+    // Transform data to snake_case format expected by ML API
+    const mlPayload = {
+        machine_id: data.Machine_ID,
+        type: data.Type,
+        air_temp: data.Air_Temp,
+        process_temp: data.Process_Temp,
+        rpm: data.RPM,
+        torque: data.Torque,
+        tool_wear: data.Tool_Wear
+    };
+    
     const mlResponse = await fetch(ML_API_URL, {
         method: 'POST',
         headers: { 
             'Content-Type': 'application/json',
             'Accept': 'application/json'
         },
-        body: JSON.stringify(data)
+        body: JSON.stringify(mlPayload)
     });
 
     if (!mlResponse.ok) {
