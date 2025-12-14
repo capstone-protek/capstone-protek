@@ -31,7 +31,7 @@ async function main() {
   for (const row of SYNTHETIC_DATA) {
     await prisma.sensor_data.create({
       data: {
-        machine_id: mainMachine.aset_id,
+        machine_id: mainMachine.id,  // ← Changed from mainMachine.aset_id to mainMachine.id
         type: 'synthetic',
         air_temperature_k: Number(row.Air_Temp),
         process_temperature_k: Number(row.Process_Temp),

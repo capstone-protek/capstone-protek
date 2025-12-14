@@ -9,7 +9,22 @@ const prisma = new PrismaClient();
  */
 export const getChartHistory = async (req: Request, res: Response) => {
   try {
-    const machineId = (req.query.machineId as string) || 'M-14850';
+    const machineAsetId = (req.query.machineId as string) || 'M-14850';
+
+    // Lookup numeric machine_id from aset_id
+    const machine = await prisma.machines.findUnique({
+      where: { aset_id: machineAsetId },
+      select: { id: true }
+    });
+
+    if (!machine) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Machine not found',
+      });
+    }
+
+    const machineId = machine.id;
 
     // Use $queryRaw to JOIN sensor_data and prediction_results
     // ON s.machine_id = p.machine_id AND s.insertion_time = p.prediction_time
@@ -44,7 +59,7 @@ export const getChartHistory = async (req: Request, res: Response) => {
 
     return res.json({
       status: 'success',
-      machine_id: machineId,
+      machine_id: machineAsetId,
       count: reversed.length,
       data: reversed,
     });
@@ -64,7 +79,22 @@ export const getChartHistory = async (req: Request, res: Response) => {
  */
 export const getChartLatest = async (req: Request, res: Response) => {
   try {
-    const machineId = (req.query.machineId as string) || 'M-14850';
+    const machineAsetId = (req.query.machineId as string) || 'M-14850';
+
+    // Lookup numeric machine_id from aset_id
+    const machine = await prisma.machines.findUnique({
+      where: { aset_id: machineAsetId },
+      select: { id: true }
+    });
+
+    if (!machine) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Machine not found',
+      });
+    }
+
+    const machineId = machine.id;
 
     // Same JOIN logic but LIMIT 1, ORDER DESC to get the latest
     const results = await prisma.$queryRaw<
@@ -97,7 +127,7 @@ export const getChartLatest = async (req: Request, res: Response) => {
 
     return res.json({
       status: 'success',
-      machine_id: machineId,
+      machine_id: machineAsetId,
       data: latest,
     });
   } catch (error) {
