@@ -36,7 +36,7 @@ require_service "http://localhost:8000" "ML API"
 
 echo ""
 echo -e "${YELLOW}[3/5] Starting Simulation...${NC}"
-SIM_RESPONSE=$(curl_silent -X POST http://localhost:8000/api/start-simulation \
+SIM_RESPONSE=$(curl_silent -X POST http://localhost:8000/api/simulation/start \
     -H "Content-Type: application/json")
 
 if echo "$SIM_RESPONSE" | grep -q "success"; then
