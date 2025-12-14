@@ -89,7 +89,7 @@ export const getMachineHistory = async (req: Request, res: Response) => {
     });
 
     // Map ke format FE SensorHistoryData lama jika diperlukan
-    const history = rows.map(r => ({
+    const history = rows.map((r: typeof rows[0]) => ({
       machineId: r.machine_id,
       timestamp: r.insertion_time as unknown as string,
       air_temperature_k: r.air_temperature_k,
