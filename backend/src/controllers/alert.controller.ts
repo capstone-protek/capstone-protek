@@ -2,18 +2,49 @@
 
 // (Pastikan Anda menggunakan Request, Response dari express)
 import { Request, Response } from 'express';
-import { MOCK_ALERTS } from '../data/mockData';
+import { PrismaClient } from '@prisma/client';
 
-export const getAllAlerts = (req: Request, res: Response) => {
+const prisma = new PrismaClient();
+
+// GET /api/alerts - Alert History (Table)
+// Menampilkan daftar riwayat kerusakan/alert dengan limit 100
+export const getAllAlerts = async (req: Request, res: Response) => {
   try {
-    // Logika bisnis kita saat ini HANYA mengembalikan data palsu
-    // Kita WAJIB mengembalikannya sesuai bentuk Kontrak API
+    // Query DB: SELECT * FROM alerts ORDER BY timestamp DESC LIMIT 100
+    const alerts = await prisma.alerts.findMany({
+      take: 100,
+      orderBy: {
+        timestamp: 'desc'
+      },
+      include: {
+        // Include machine info agar FE bisa tampilkan nama mesinnya
+        machine: {
+          select: {
+            id: true,
+            aset_id: true,
+            name: true
+          }
+        }
+      }
+    });
+
+    // Format response sesuai contract
+    const formattedAlerts = alerts.map(alert => ({
+      id: alert.id,
+      machine_id: alert.machine_id,
+      machine_name: alert.machine?.name || 'Unknown',
+      message: alert.message,
+      severity: alert.severity,
+      timestamp: alert.timestamp
+    }));
+
     res.status(200).json({
-      alerts: MOCK_ALERTS 
+      alerts: formattedAlerts
     });
 
   } catch (error) {
-    res.status(500).json({ error: "Gagal mengambil data alerts" });
+    console.error('Error fetching alerts:', error);
+    res.status(500).json({ error: "Failed to fetch alerts" });
   }
 };
 
