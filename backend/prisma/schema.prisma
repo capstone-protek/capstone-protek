@@ -16,67 +16,54 @@ enum MachineStatus {
   OFFLINE
 }
 
-// Model 1: Machine
-model Machine {
+// Model 1: machines (match table name)
+model machines {
   id            Int             @id @default(autoincrement())
-  asetId        String          @unique // Contoh: "M-14850"
+  aset_id       String          @unique // Contoh: "M-14850"
   name          String          // Contoh: "CNC Grinder 01"
   status        MachineStatus   @default(OFFLINE)
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  created_at    DateTime        @default(now())
+  updated_at    DateTime        @updatedAt
 
   // Relasi
-  alerts        Alert[]
-  sensorHistory SensorHistory[]
+  alerts        alerts[]
+  sensor_data   sensor_data[]
+}
+// Model 2: alerts (match table name)
+model alerts {
+  id          Int      @id @default(autoincrement())
+  message     String
+  severity    String   // "HIGH", "MEDIUM", "LOW"
+  timestamp   DateTime @default(now())
+
+  // Relasi ke machines
+  machine_id  Int
+  machine     machines @relation(fields: [machine_id], references: [id])
 }
 
-// Model 2: Alert
-model Alert {
-  id        Int      @id @default(autoincrement())
-  message   String
-  severity  String   // "HIGH", "MEDIUM", "LOW"
-  timestamp DateTime @default(now())
-  
-  // Relasi ke Machine
-  machineId Int
-  machine   Machine  @relation(fields: [machineId], references: [id])
-}
+// Sensor history dihapus (tidak digunakan)
 
-// Model 3: SensorHistory (Sesuai request Notion)
-model SensorHistory {
-  id        Int      @id @default(autoincrement())
-  type      String   // Misal: "Vibration"
-  value     Float    // Misal: 85.5
-  timestamp DateTime @default(now())
-
-  // Relasi ke Machine
-  machineId Int
-  machine   Machine  @relation(fields: [machineId], references: [id])
-}
-
-// Model 4: sensor_data (sesuai dari API ML)
+// Model 3: sensor_data (sesuai dari API ML)
 model sensor_data {
-
-  // Kolom ID
   id                    Int       @id @default(autoincrement())
-  
+
+  // Relasi ke machines via aset_id (string like "M-14850")
+  machine_id            String
+  machine               machines  @relation(fields: [machine_id], references: [aset_id])
+
   // Kolom Sensor
-  machine_id            Int
   type                  String    // Type (L, M, H)
-  air_temperature_K     Float     
-  process_temperature_K Float   
-  rotational_speed_rpm  Int      
-  torque_Nm             Float     
+  air_temperature_k     Float     
+  process_temperature_k Float     
+  rotational_speed_rpm  Int       
+  torque_nm             Float     
   tool_wear_min         Int       
 
   // Kolom Timestamp
   insertion_time        DateTime  @default(now())
-
-  // Nama tabel di database
-  @@map("sensor_data") 
 }
 
-// Model 5: prediction_results (sesuai dari API ML)
+// Model 4: prediction_results (sesuai dari API ML)
 model prediction_results {
   id                Int       @id @default(autoincrement())
   prediction_time   DateTime  @default(now()) // Waktu prediksi
@@ -89,8 +76,5 @@ model prediction_results {
   failure_type      String    // Failure_Type (cth: "Power Failure")
   action            String    // Action (cth: "Cek tegangan listrik...")
   urgency           String    // Urgency (cth: "🚨 SANGAT MENDESAK...")
-
-  // Nama tabel di database
-  @@map("prediction_results")
 }
 

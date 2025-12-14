@@ -6,9 +6,8 @@ async function main() {
   console.log('🌱 Start seeding...');
 
   // 1. Bersihkan Data Lama (Biar tidak duplikat/error)
-  await prisma.alert.deleteMany();
-  await prisma.sensorHistory.deleteMany();
-  await prisma.machine.deleteMany();
+  await prisma.alerts.deleteMany();
+  await prisma.machines.deleteMany();
 
   console.log('🧹 Old data cleared.');
 
@@ -39,26 +38,17 @@ async function main() {
 
   // 3. Masukkan ke Database
   for (const m of machinesData) {
-    const machine = await prisma.machine.create({
+    const machine = await prisma.machines.create({
       data: {
-        asetId: m.asetId,
+        aset_id: m.asetId,
         name: m.name,
         // @ts-ignore (Enum kadang rewel di seeder, kita ignore aman)
         status: m.status 
       }
     });
-    console.log(`✅ Created machine: ${machine.asetId}`);
+    console.log(`✅ Created machine: ${machine.aset_id}`);
 
-    // 4. Opsional: Buat Dummy History Awal (Biar grafik tidak kosong melompong)
-    // Kita buat 10 data sensor palsu untuk masing-masing mesin
-    const historyData = Array.from({ length: 10 }).map((_, i) => ({
-      machineId: machine.id,
-      type: 'RPM',
-      value: 1400 + Math.random() * 200, // Random 1400-1600
-      timestamp: new Date(Date.now() - i * 3600000) // Mundur per jam
-    }));
-
-    await prisma.sensorHistory.createMany({ data: historyData });
+    // Sensor history dihapus (tidak digunakan)
   }
 
   console.log('✅ Seeding finished.');

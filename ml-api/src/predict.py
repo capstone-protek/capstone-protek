@@ -53,24 +53,29 @@ class MaintenanceModel:
         # ==========================================
         # 1. PREPROCESSING
         # ==========================================
+        # Use snake_case input, then map to expected feature names
         input_df = pd.DataFrame([input_data])
 
-        # Map Type
+        # Map type to numeric
         type_map = {'L': 0, 'M': 1, 'H': 2}
-        input_df['Type'] = input_df['Type'].map(type_map)
+        input_df['type_num'] = input_df['type'].map(type_map)
 
-        # Hitung Fitur Fisika
-        input_df['Power'] = input_df['Torque'] * input_df['RPM']
-        input_df['Temp_Diff'] = input_df['Process_Temp'] - input_df['Air_Temp']
-        input_df['Wear_Strain'] = input_df['Tool_Wear'] * input_df['Torque']
+        # Physics features (snake_case)
+        input_df['power'] = input_df['torque'] * input_df['rpm']
+        input_df['temp_diff'] = input_df['process_temp'] - input_df['air_temp']
+        input_df['wear_strain'] = input_df['tool_wear'] * input_df['torque']
 
-        # Sesuaikan Nama Kolom
+        # Rename snake_case into dataset-friendly names (CSV headers)
         rename_dict = {
-            'Air_Temp': 'Air temperature [K]', 
-            'Process_Temp': 'Process temperature [K]',
-            'RPM': 'Rotational speed [rpm]', 
-            'Torque': 'Torque [Nm]', 
-            'Tool_Wear': 'Tool wear [min]'
+            'air_temp': 'Air temperature [K]',
+            'process_temp': 'Process temperature [K]',
+            'rpm': 'Rotational speed [rpm]',
+            'torque': 'Torque [Nm]',
+            'tool_wear': 'Tool wear [min]',
+            'type_num': 'Type',            # numeric encoded
+            'power': 'Power',
+            'temp_diff': 'Temp_Diff',
+            'wear_strain': 'Wear_Strain',
         }
         input_df = input_df.rename(columns=rename_dict)
 
@@ -109,10 +114,10 @@ class MaintenanceModel:
                 remaining_mins = max(0, remaining_mins)
             except Exception as e:
                 print(f"⚠️ RUL prediction error: {e}. Using fallback method.")
-                remaining_mins = self._calculate_rul_fallback(input_data)
+                remaining_mins = self._calculate_rul_fallback(input_df)
         else:
             # Fallback: Rule-based RUL estimation
-            remaining_mins = self._calculate_rul_fallback(input_data)
+            remaining_mins = self._calculate_rul_fallback(input_df)
         
         hours_left = remaining_mins / 60
 
@@ -140,22 +145,22 @@ class MaintenanceModel:
         # 4. SIAPKAN OUTPUT
         # ==========================================
         result = {
-            "Machine_ID": input_data.get('Machine_ID', 'Unknown'),
-            "Risk_Probability": f"{prob:.1%}",
-            "RUL_Estimate": rul_message,
-            "RUL_Status": rul_status,
-            "RUL_Minutes": f"{remaining_mins:.0f}"
+            "machine_id": input_data.get('machine_id', 'Unknown'),
+            "risk_probability": f"{prob:.1%}",
+            "rul_estimate": rul_message,
+            "rul_status": rul_status,
+            "rul_minutes": f"{remaining_mins:.0f}"
         }
 
         if status == 0:
-            result['Status'] = "✅ NORMAL"
-            result['Message'] = f"Mesin beroperasi normal. Estimasi sisa umur: {rul_message}"
+            result['status'] = "✅ NORMAL"
+            result['message'] = f"Mesin beroperasi normal. Estimasi sisa umur: {rul_message}"
             
             # Preventive warning jika RUL rendah meskipun status normal
             if hours_left < 4:
-                result['Recommendation'] = f"⚠️ Tool wear approaching limit. Schedule maintenance dalam {rul_message}."
+                result['recommendation'] = f"⚠️ Tool wear approaching limit. Schedule maintenance dalam {rul_message}."
         else:
-            result['Status'] = "⚠️ CRITICAL FAILURE DETECTED"
+            result['status'] = "⚠️ CRITICAL FAILURE DETECTED"
 
             # Prediksi jenis kerusakan
             X_input_type = input_df[self.artifacts['features_type']]
@@ -163,35 +168,35 @@ class MaintenanceModel:
             
             type_code = self.artifacts['model_type'].predict(X_scaled_type)[0]
             fail_name = self.artifacts['le_type'].inverse_transform([type_code])[0]
-            result['Failure_Type'] = fail_name
+            result['failure_type'] = fail_name
 
             # Rekomendasi Action
             if "Power" in fail_name: 
-                result['Action'] = "Cek tegangan listrik & kurangi beban RPM."
+                result['action'] = "Cek tegangan listrik & kurangi beban RPM."
             elif "Heat" in fail_name: 
-                result['Action'] = "Periksa coolant & ventilasi segera."
+                result['action'] = "Periksa coolant & ventilasi segera."
             elif "Tool" in fail_name: 
-                result['Action'] = "Jadwalkan penggantian tool segera."
+                result['action'] = "Jadwalkan penggantian tool segera."
             elif "Overstrain" in fail_name:
-                result['Action'] = "Kurangi torsi dan periksa beban kerja mesin."
+                result['action'] = "Kurangi torsi dan periksa beban kerja mesin."
             else: 
-                result['Action'] = "Lakukan inspeksi menyeluruh."
+                result['action'] = "Lakukan inspeksi menyeluruh."
 
             # Enhanced urgency based on RUL
             if remaining_mins < 30:
-                result['Urgency'] = "🚨 SANGAT MENDESAK - Hentikan operasi dalam < 30 menit!"
+                result['urgency'] = "🚨 SANGAT MENDESAK - Hentikan operasi dalam < 30 menit!"
             elif remaining_mins < 60:
-                result['Urgency'] = "⚠️ MENDESAK - Maintenance diperlukan dalam 1 jam!"
+                result['urgency'] = "⚠️ MENDESAK - Maintenance diperlukan dalam 1 jam!"
 
         return result
 
-    def _calculate_rul_fallback(self, input_df: pd.DataFrame) -> tuple:
+    def _calculate_rul_fallback(self, input_df: pd.DataFrame) -> int:
         """
         Fallback RUL calculation using rule-based estimation when ML model unavailable.
         Based on tool wear, temperature, and rotational speed.
         
         Returns:
-            tuple: (hours_remaining, minutes_remaining)
+            int: estimated remaining minutes
         """
         try:
             # Extract key features
@@ -229,9 +234,9 @@ class MaintenanceModel:
             estimated_hours = max(0.5, min(24, estimated_hours))
             estimated_mins = int(estimated_hours * 60)
             
-            return int(estimated_hours), estimated_mins
+            return estimated_mins
             
         except Exception as e:
             print(f"⚠️ [RUL Fallback] Error in calculation: {e}")
             # Return conservative estimate
-            return 4, 240
+            return 240

@@ -87,13 +87,7 @@ export interface MachineDetailResponse {
   updatedAt: string;
 }
 
-export interface SensorHistoryData {
-  id: number;
-  type: string;
-  value: number;
-  timestamp: string;
-  machineId: number;
-}
+// Sensor history types removed (not used)
 
 // ==========================================================
 // 5. API RESPONSE WRAPPERS
