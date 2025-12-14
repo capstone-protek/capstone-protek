@@ -19,11 +19,12 @@ const api = axios.create({
   },
 });
 
-// Tambahkan Interface untuk Response Simulasi
-interface SimulationResponse {
+// --- INTERFACES (Di-export agar bisa dipakai di Komponen) ---
+
+export interface SimulationResponse {
   status: "success" | "error";
   message: string;
-  is_running?: boolean; // Opsional, tergantung response backend
+  is_running?: boolean;
 }
 
 export interface TrendDataPoint {
@@ -31,6 +32,24 @@ export interface TrendDataPoint {
   healthScore: number;
   machineId: string;
 }
+
+export interface DebugMatchItem {
+  mesin: string;
+  kode: string;
+  status_saat_ini: string;
+  prediksi_ml: {
+    sisa_umur_rul: string;
+    risiko_kerusakan: string;
+    status_prediksi: string;
+  } | string; 
+}
+
+export interface ChatResponse {
+  reply: string;
+  debug_match?: DebugMatchItem[]; 
+}
+
+// --- SERVICES ---
 
 export const simulationService = {
   // 1. Start Simulasi
@@ -41,12 +60,12 @@ export const simulationService = {
 
   // 2. Stop Simulasi
   stop: async () => {
-    // Note: Di dokumentasi backend pakai GET, tapi kalau nanti diubah ke POST sesuaikan saja
+    // Menggunakan GET sesuai controller backend Anda saat ini
     const response = await api.get<SimulationResponse>("/simulation/stop");
     return response.data;
   },
 
-  // 3. Cek Status (PENTING: Agar tombol tahu harus warna Merah atau Hijau)
+  // 3. Cek Status (Untuk tombol Start/Stop)
   getStatus: async () => {
     const response = await api.get<{ is_running: boolean }>("/simulation/status");
     return response.data;
@@ -55,7 +74,6 @@ export const simulationService = {
 
 export const dashboardService = {
   getSummary: async () => {
-    // Sesuai Swagger: GET /api/dashboard/summary
     const response = await api.get<DashboardSummaryResponse>("/dashboard/summary");
     return response.data;
   },
@@ -75,6 +93,20 @@ export const dashboardService = {
     return response.data;
   },
 
+  // --- FIX PENTING: Menambahkan getSensors ---
+  // Ini diperlukan oleh MachineHealthChart.tsx
+  getSensors: async (asetId: string) => {
+    // Mengambil data history sensor untuk grafik realtime
+    const response = await api.get<SensorHistoryData[]>(`/machines/${asetId}/history`);
+    return response.data;
+  },
+
+  // Method baru untuk mengambil data dari tabel sensor_data
+  getSensorData: async (asetId: string) => {
+    const response = await api.get(`/sensor-data/machine/${asetId}`);
+    return response.data;
+  },
+
   getHistory: async (asetId: string) => {
     const response = await api.get<SensorHistoryData[]>(`/machines/${asetId}/history`);
     return response.data;
@@ -82,8 +114,8 @@ export const dashboardService = {
 
   getAlerts: async () => {
     const response = await api.get<{ alerts: AlertData[] } | AlertData[]>(`/alerts`);
-    // Backend mengembalikan { alerts: [...] } atau array langsung
     const data = response.data;
+    // Handle format { alerts: [...] } atau array langsung [...]
     return Array.isArray(data) ? data : data.alerts;
   },
 
@@ -97,6 +129,10 @@ export const dashboardService = {
     return response.data;
   },
 
+  sendMessage: async (message: string) => {
+    const response = await api.post<ChatResponse>('/chat', { message });
+    return response.data;
+  }
 };
 
 export default api;

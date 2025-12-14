@@ -14,6 +14,7 @@ import predictRoutes from './routes/predict.routes';
 import dashboardRoutes from './routes/dashboard.routes';
 import chatRoutes from './routes/chat.routes';
 import simulationRoutes from './routes/simulation.routes';
+import sensorRoutes from './routes/sensor.routes';
 
 const app = express();
 
@@ -31,6 +32,7 @@ app.use('/api/predict', predictRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/simulation', simulationRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/sensor-data', sensorRoutes);
 
 
 // EKSPOR APP

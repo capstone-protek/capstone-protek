@@ -3,12 +3,11 @@ import { Request, Response } from 'express';
 // Base URL ML dari env atau default
 // Pastikan tidak ada trailing slash '/' di sini untuk konsistensi
 const ML_API_URL =
-  process.env.ML_API_URL || 'https://capstone-protek-production.up.railway.app';
+  process.env.ML_API_URL || 'https://api-protek-production.up.railway.app';
 
 /**
  * POST /api/simulation/start
  * Memulai simulasi.
- * Bertindak sebagai TRIGGER. Body opsional.
  */
 export async function startSimulation(req: Request, res: Response) {
   try {
@@ -16,7 +15,6 @@ export async function startSimulation(req: Request, res: Response) {
     console.log(`[Simulation] Starting... Target: ${targetUrl}`);
 
     // --- FIX: SAFE BODY CHECK ---
-    // Mencegah "Cannot convert undefined or null to object"
     const bodyData = req.body || {};
     const payload = Object.keys(bodyData).length > 0 ? bodyData : {};
 
@@ -28,20 +26,27 @@ export async function startSimulation(req: Request, res: Response) {
       body: JSON.stringify(payload),
     });
 
-    // Cek jika response bukan JSON (misal HTML error)
+    // Cek jika response bukan JSON
     const contentType = response.headers.get("content-type");
     if (!contentType || !contentType.includes("application/json")) {
       const text = await response.text();
-      console.error(`[Simulation] Non-JSON response from ML API: ${text}`);
+      console.error(`[Simulation] Non-JSON response: ${text}`);
       throw new Error(`ML API error (non-json): ${text.substring(0, 100)}...`);
     }
 
-    const data = await response.json();
+    // --- FIX TYPE ERROR: Gunakan ': any' agar TypeScript tidak rewel ---
+    const data: any = await response.json();
 
     if (response.ok) {
       return res.status(200).json(data);
     } else {
-      console.warn(`[Simulation] ML API returned error status: ${response.status}`);
+      // Logic khusus: Jika 400 (Simulasi sudah jalan), log biasa saja
+      if (response.status === 400) {
+        // Karena 'data' sudah 'any', kita bisa akses .message dengan aman
+        console.log(`[Simulation] Info: ${data.message || 'Simulasi sudah berjalan.'}`);
+      } else {
+        console.warn(`[Simulation] ML API returned error status: ${response.status}`);
+      }
       return res.status(response.status).json(data);
     }
   } catch (error: any) {
@@ -66,19 +71,26 @@ export async function stopSimulation(req: Request, res: Response) {
 
     const response = await fetch(targetUrl, { method: 'GET' });
 
-    // Cek content type
+    // Cek Content Type
     const contentType = response.headers.get("content-type");
     if (!contentType || !contentType.includes("application/json")) {
       const text = await response.text();
-      console.error(`[Simulation] Non-JSON response from ML API: ${text}`);
       return res.status(response.status).json({ message: text });
     }
 
-    const data = await response.json();
+    // --- FIX DI SINI: Gunakan ': any' ---
+    const data: any = await response.json(); 
 
     if (response.ok) {
       return res.status(200).json(data);
     } else {
+      // Handling 400 (Sudah stop)
+      if (response.status === 400) {
+         // Sekarang aman mengakses .message karena tipe data 'any'
+         console.log(`[Simulation] Info: ${data.message || 'Simulasi sudah berhenti.'}`);
+      } else {
+         console.warn(`[Simulation] Error Stop: ${response.status}`);
+      }
       return res.status(response.status).json(data);
     }
   } catch (error: any) {
@@ -93,20 +105,38 @@ export async function stopSimulation(req: Request, res: Response) {
 
 /**
  * GET /api/simulation/status
- * Mendapatkan status simulasi
+ * Proxy Realtime ke Python API
  */
 export async function getSimulationStatus(req: Request, res: Response) {
   try {
-    return res.status(200).json({
-      status: 'success',
-      message: 'Simulation functionality is ready (Trigger Mode)',
-      note: 'Ensure Python backend has /api/start-simulation endpoint'
+    const targetUrl = `${ML_API_URL}/api/simulation/status`;
+    
+    // Timeout 5 detik agar tidak hanging
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+    const response = await fetch(targetUrl, { 
+        method: 'GET',
+        signal: controller.signal
     });
+    clearTimeout(timeoutId);
+
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+        return res.status(200).json({ is_running: false, message: "ML API not returning JSON" });
+    }
+
+    // --- FIX TYPE ERROR: Gunakan ': any' ---
+    const data: any = await response.json();
+    
+    return res.status(response.status).json(data);
+
   } catch (error: any) {
-    console.error('Error getting simulation status:', error);
-    return res.status(500).json({
-      status: 'error',
-      message: 'Failed to get simulation status',
+    // Jika koneksi ke Python gagal, return is_running: false (Safe Mode)
+    return res.status(200).json({
+      status: 'success', 
+      is_running: false, 
+      message: 'ML API unreachable',
       error: error.message,
     });
   }
