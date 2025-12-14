@@ -6,6 +6,6 @@ const router = Router();
 
 router.get('/', getMachines);           // Akses: /api/machines
 router.get('/:id', getMachineDetail);   // Akses: /api/machines/1
-router.get('/:id/history', getMachineHistory); // Akses: /api/machines/1/history
+router.get('/:id/history', getMachineHistory);
 
 export default router;

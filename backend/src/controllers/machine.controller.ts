@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 // GET /api/machines
 export const getMachines = async (req: Request, res: Response) => {
   try {
-    const machines = await prisma.machine.findMany({
+    const machinesList = await prisma.machines.findMany({
       orderBy: { name: 'asc' },
       include: {
         // Include alerts biar FE tau status detailnya nanti
@@ -16,7 +16,7 @@ export const getMachines = async (req: Request, res: Response) => {
         }
       }
     });
-    res.json(machines);
+    res.json(machinesList);
   } catch (error) {
     console.error("Error fetching machines:", error);
     res.status(500).json({ error: "Failed to fetch machines" });
@@ -37,14 +37,14 @@ export const getMachineDetail = async (req: Request, res: Response) => {
     // LOGIC PINTAR: Cek apakah inputnya Angka atau String
     if (!isNaN(Number(id))) {
         // Kalau angka (misal: 1), cari by ID (convert ke Number)
-        machine = await prisma.machine.findUnique({ 
+        machine = await prisma.machines.findUnique({ 
             where: { id: Number(id) } 
         });
     } else {
-        // Kalau string (misal: M-001), cari by asetId
+        // Kalau string (misal: M-001), cari by aset_id
         // FIX TS ERROR: Pakai String(id) biar TypeScript yakin ini string
-        machine = await prisma.machine.findUnique({ 
-            where: { asetId: String(id) } 
+        machine = await prisma.machines.findUnique({ 
+            where: { aset_id: String(id) } 
         });
     }
 
@@ -58,43 +58,51 @@ export const getMachineDetail = async (req: Request, res: Response) => {
 };
 
 // GET /api/machines/:id/history
+// GET /api/machines/:id/history -> gunakan sensor_data
 export const getMachineHistory = async (req: Request, res: Response) => {
   const { id } = req.params;
-  
+
   if (!id) {
     return res.status(400).json({ error: "Machine ID is required" });
   }
 
   try {
-    let machineIdInt: number;
+    let machineAsetId: string;
 
-    // 1. CARI ID MESIN YANG BENAR (INT)
     if (!isNaN(Number(id))) {
-        machineIdInt = Number(id);
+      // If numeric ID, lookup aset_id
+      const machine = await prisma.machines.findUnique({
+        where: { id: Number(id) },
+        select: { aset_id: true }
+      });
+      if (!machine) return res.status(404).json({ error: "Machine for history not found" });
+      machineAsetId = machine.aset_id;
     } else {
-        // Kalau request pakai "M-001", kita cari dulu ID aslinya
-        // FIX TS ERROR: Pakai String(id)
-        const machine = await prisma.machine.findUnique({
-            where: { asetId: String(id) },
-            select: { id: true } 
-        });
-
-        if (!machine) return res.status(404).json({ error: "Machine for history not found" });
-        machineIdInt = machine.id;
+      // If string (e.g., M-14850), use directly
+      machineAsetId = String(id);
     }
 
-    // 2. QUERY HISTORY PAKAI ID INT YANG SUDAH DITEMUKAN
-    const history = await prisma.sensorHistory.findMany({
-      where: { machineId: machineIdInt },
-      take: 50, // Limit 50 data terakhir
-      orderBy: { timestamp: 'desc' }, 
+    const rows = await prisma.sensor_data.findMany({
+      where: { machine_id: machineAsetId },
+      take: 100,
+      orderBy: { insertion_time: 'desc' }
     });
-    
-    // Reverse biar frontend nerima urutan Lama -> Baru (Kiri ke Kanan grafik)
-    res.json(history.reverse());
 
+    // Map ke format FE SensorHistoryData lama jika diperlukan
+    const history = rows.map(r => ({
+      machineId: r.machine_id,
+      timestamp: r.insertion_time as unknown as string,
+      air_temperature_k: r.air_temperature_k,
+      process_temperature_k: r.process_temperature_k,
+      rotational_speed_rpm: r.rotational_speed_rpm,
+      torque_nm: r.torque_nm,
+      tool_wear_min: r.tool_wear_min,
+      type: r.type,
+    })).reverse();
+
+    res.json(history);
   } catch (error) {
-    console.error("Error history:", error); 
+    console.error("Error history:", error);
     res.status(500).json({ error: "Failed to fetch history" });
   }
 };

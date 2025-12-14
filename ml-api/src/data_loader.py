@@ -7,12 +7,12 @@ from typing import List, Dict, Any
 # Tentukan path relatif ke folder dataset
 DATASET_DIR = os.path.join(os.path.dirname(__file__), 'dataset')
 
-# Mapping untuk menetapkan machine_id berdasarkan nama file
+# Mapping untuk menetapkan machine_id berdasarkan nama file (string IDs)
 FILE_TO_ID_MAP = {
-    'SYNTHETIC_SPEED_LOW.csv': 1,
-    'SYNTHETIC_TEMP_HIGH.csv': 2,
-    'SYNTHETIC_TORQUE_HIGH.csv': 3,
-    'SYNTHETIC_WEAR_HIGH.csv': 4,
+    'SYNTHETIC_SPEED_LOW.csv': 'M-14850',
+    'SYNTHETIC_TEMP_HIGH.csv': 'M-33011',
+    'SYNTHETIC_TORQUE_HIGH.csv': 'M-18096',
+    'SYNTHETIC_WEAR_HIGH.csv': 'M-20232',
 }
 
 def load_and_combine_data() -> List[Dict[str, Any]]:

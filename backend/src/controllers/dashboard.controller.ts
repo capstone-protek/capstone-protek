@@ -8,11 +8,11 @@ const prisma = new PrismaClient();
 export const getDashboardSummary = async (req: Request, res: Response) => {
   try {
     // 1. Hitung Total Mesin
-    const totalMachines = await prisma.machine.count();
+    const totalMachines = await prisma.machines.count();
 
     // 2. Hitung Mesin "Bermasalah" (CRITICAL atau WARNING)
     // Logic: Kalau ada 1 mesin warning, dashboard harus kasih sinyal.
-    const criticalMachines = await prisma.machine.count({
+    const criticalMachines = await prisma.machines.count({
       where: {
         status: {
           in: ['CRITICAL', 'WARNING'] 
@@ -24,7 +24,7 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    const todaysAlerts = await prisma.alert.count({
+    const todaysAlerts = await prisma.alerts.count({
       where: {
         timestamp: {
           gte: today
@@ -34,7 +34,7 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
 
     // 4. Ambil 5 Alert Terakhir (Untuk List "Recent Activity")
     // Kita include 'machine' agar FE bisa tampilkan nama mesinnya
-    const recentAlerts = await prisma.alert.findMany({
+    const recentAlerts = await prisma.alerts.findMany({
       take: 5,
       orderBy: {
         timestamp: 'desc'
@@ -43,7 +43,7 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
         machine: {
           select: {
             name: true,
-            asetId: true
+            aset_id: true
           }
         }
       }

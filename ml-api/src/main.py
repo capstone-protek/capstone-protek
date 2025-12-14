@@ -16,9 +16,8 @@ from .data_loader import load_and_combine_data
 from src.predict import MaintenanceModel
 
 # --- MLOPS SIMULATION CONFIGURATION ---
-ACCELERATION_FACTOR = 100
-# Waktu nyata dalam detik (300s=5m, 180s=3m, 120s=2m)
-TIME_MAPPING = {"H": 5, "M": 3, "L": 2}
+# Waktu jeda simulasi dalam menit (real-time)
+TIME_MAPPING_MINUTES = {"L": 2, "M": 3, "H": 5}
 
 # Status Simulasi Global
 DATA_SIMULASI: List[Dict[str, Any]] = []
@@ -41,42 +40,19 @@ app = FastAPI(title="PROTEK AI SERVICE (MLOPS SIMULATOR)", version="2.0 (Full ML
 ai_engine = MaintenanceModel()
 
 # --- Fungsi MLOps: Feature Engineering ---
-# Fungsi ini harus mengambil data historis dari DB dan menghitung fitur
+# Fungsi ini menyiapkan fitur dari baris CSV tanpa sensor history (snake_case)
 async def perform_feature_engineering(row: Dict[str, Any]):
-    """Mengambil data historis relevan dan menghitung fitur turunan."""
-
-    data_sql = """
-        SELECT tool_wear_min, torque_nm, rotational_speed_rpm
-        FROM sensor_data
-        WHERE machine_id = $1
-        ORDER BY insertion_time DESC
-        LIMIT 5;
-    """
+    """Siapkan fitur prediksi dari baris CSV tanpa sensor history (snake_case)."""
 
     machine_id = row["machine_id"]
-    history = await execute_query(data_sql, machine_id)
-
-    if not history:
-        return {
-            "machine_id": machine_id,
-            "rolling_torque_avg": row["Torque [Nm]"],
-            "latest_tool_wear": row["Tool wear [min]"],
-            "latest_torque": row["Torque [Nm]"],
-        }
-
-    torque_data = [float(record["torque_nm"]) for record in history]
-    rolling_torque_avg = sum(torque_data) / len(torque_data)
-    latest = history[0]
-
     return {
-        "Machine_ID": machine_id,
-        "Type": row["Type"],
-        "Air_Temp": row["Air temperature [K]"],
-        "Process_Temp": row["Process temperature [K]"],
-        "RPM": row["Rotational speed [rpm]"],
-        "Torque": float(latest["torque_nm"]),
-        "Tool_Wear": float(latest["tool_wear_min"]),
-        "rolling_torque_avg": rolling_torque_avg,
+        "machine_id": machine_id,
+        "type": row.get("Type"),
+        "air_temp": row.get("Air temperature [K]"),
+        "process_temp": row.get("Process temperature [K]"),
+        "rpm": row.get("Rotational speed [rpm]"),
+        "torque": row.get("Torque [Nm]"),
+        "tool_wear": row.get("Tool wear [min]"),
     }
 
 
@@ -92,7 +68,7 @@ async def insert_sensor_row(row: Dict[str, Any]):
 
     inserted_records = await execute_query(
         sql_insert,
-        row["machine_id"],
+        str(row["machine_id"]),  # Ensure string (e.g., "M-14850")
         row["Type"],
         row["Air temperature [K]"],
         row["Process temperature [K]"],
@@ -105,26 +81,26 @@ async def insert_sensor_row(row: Dict[str, Any]):
 
 
 def extract_prediction_metrics(prediction_result: Dict[str, Any], fallback_row: Dict[str, Any]):
-    """Normalisasi hasil prediksi ke format angka dan string aman."""
+    """Normalisasi hasil prediksi (snake_case) ke format angka dan string aman."""
 
-    machine_id = prediction_result.get("Machine_ID", fallback_row.get("machine_id"))
-    risk_str = prediction_result.get("Risk_Probability", "0%")
+    machine_id = prediction_result.get("machine_id", fallback_row.get("machine_id"))
+    risk_str = prediction_result.get("risk_probability", "0%")
     try:
         risk_val = float(str(risk_str).replace("%", "")) / 100.0
     except Exception:
         risk_val = 0.0
 
-    rul_estimate = prediction_result.get("RUL_Estimate", "")
-    rul_status = prediction_result.get("RUL_Status", "")
+    rul_estimate = prediction_result.get("rul_estimate", "")
+    rul_status = prediction_result.get("rul_status", "")
     try:
-        rul_minutes = float(prediction_result.get("RUL_Minutes", 0))
+        rul_minutes = float(prediction_result.get("rul_minutes", 0))
     except Exception:
         rul_minutes = 0.0
 
-    status_text = prediction_result.get("Status", "")
-    failure_type = prediction_result.get("Failure_Type", "")
-    action = prediction_result.get("Action", "")
-    urgency = prediction_result.get("Urgency", "")
+    status_text = prediction_result.get("status", "")
+    failure_type = prediction_result.get("failure_type", "")
+    action = prediction_result.get("action", "")
+    urgency = prediction_result.get("urgency", "")
 
     return (
         machine_id,
@@ -154,8 +130,8 @@ async def run_simulation_loop():
     
     while SIMULATION_INDEX < len(DATA_SIMULASI):
         row = DATA_SIMULASI[SIMULATION_INDEX]
-        time_interval_seconds = TIME_MAPPING.get(row['Type'], 0)
-        sleep_time = time_interval_seconds / ACCELERATION_FACTOR
+        minutes = TIME_MAPPING_MINUTES.get(row['Type'], 2)
+        sleep_time = minutes * 60
         
         try:
             # 1) Injeksi data mentah ke DB
@@ -232,21 +208,21 @@ async def run_simulation_loop():
 # --- 2. Schema Data (Validasi) ---
 class MachineSensorData(BaseModel):
     # Sesuaikan Pydantic dengan skema data yang Anda gunakan di FE (misalnya, jika Anda ingin menguji API secara langsung)
-    Machine_ID: str = Field(..., example="M-001")
-    Type: Literal['L', 'M', 'H']
-    Air_Temp: float = Field(..., gt=0)
-    Process_Temp: float = Field(..., gt=0)
-    RPM: int = Field(..., gt=0)
-    Torque: float = Field(..., ge=0)
-    Tool_Wear: int = Field(..., ge=0)
+    machine_id: str = Field(..., example="M-001")
+    type: Literal['L', 'M', 'H']
+    air_temp: float = Field(..., gt=0)
+    process_temp: float = Field(..., gt=0)
+    rpm: int = Field(..., gt=0)
+    torque: float = Field(..., ge=0)
+    tool_wear: int = Field(..., ge=0)
     
     # Perluasan untuk fitur FE jika diuji langsung:
     # rolling_torque_avg: Optional[float] = None 
 
     @model_validator(mode='after')
     def check_physics(self):
-        if self.Process_Temp < self.Air_Temp:
-            raise ValueError("Process Temp harus >= Air Temp")
+        if self.process_temp < self.air_temp:
+            raise ValueError("process_temp harus >= air_temp")
         return self
 
 # --- Setup App & Events ---
@@ -272,10 +248,15 @@ async def startup_event_unified():
     # 2. Load Data Simulasi (dari data_loader.py)
     DATA_SIMULASI = load_and_combine_data()
         
-    # 3. Create DB Pool (DISABLED for demo - no database required)
-    # await create_pool()
-    # print("Database pool berhasil dibuat.")
-    print("✅ API ready without database (demo mode)")
+    # 3. Create DB Pool (ENABLED for simulation)
+    try:
+        await create_pool()
+        print("✅ Database pool berhasil dibuat.")
+    except Exception as e:
+        print(f"⚠️ Database connection failed: {e}")
+        print("✅ API ready (demo mode - no database)")
+    
+    print("✅ API ready for simulation!")
 
 @app.on_event("shutdown")
 async def shutdown_event_unified():

@@ -20,23 +20,13 @@ export const predictMaintenance = async (req: Request, res: Response) => {
     console.log(`[Predict] Processing data for ${data.Machine_ID}...`);
 
     // 2. Cek Apakah Mesin Ada di DB Lokal? (SANGAT PENTING)
-    const machine = await prisma.machine.findUnique({
-      where: { asetId: data.Machine_ID }
+    const machine = await prisma.machines.findUnique({
+      where: { aset_id: data.Machine_ID }
     });
 
-    // Jika mesin ketemu, simpan history sensornya agar grafik realtime jalan
-    if (machine) {
-        await prisma.sensorHistory.createMany({
-            data: [
-                { machineId: machine.id, type: 'Air_Temp', value: data.Air_Temp },
-                { machineId: machine.id, type: 'Process_Temp', value: data.Process_Temp },
-                { machineId: machine.id, type: 'RPM', value: data.RPM },
-                { machineId: machine.id, type: 'Torque', value: data.Torque },
-                { machineId: machine.id, type: 'Tool_Wear', value: data.Tool_Wear },
-            ]
-        });
-    } else {
-        console.warn(`   ⚠️ Machine ${data.Machine_ID} not found in DB. History & Alert cannot be saved.`);
+    // Sensor history dihapus (tidak digunakan)
+    if (!machine) {
+        console.warn(`   ⚠️ Machine ${data.Machine_ID} not found in DB. Alert cannot be saved.`);
     }
 
     // 3. Kirim Data ke ML API (Railway)
@@ -81,11 +71,10 @@ export const predictMaintenance = async (req: Request, res: Response) => {
                 alertMessage += ` (${result.Urgency})`;
             }
         }
-
         // Simpan ke Tabel Alert
-        await prisma.alert.create({
+        await prisma.alerts.create({
             data: {
-                machineId: machine.id,
+                machine_id: machine.id,
                 message: alertMessage,
                 severity: 'CRITICAL',
                 timestamp: new Date()
@@ -93,7 +82,7 @@ export const predictMaintenance = async (req: Request, res: Response) => {
         });
         
         // Update Status Mesin jadi 'CRITICAL' (Biar merah di dashboard)
-        await prisma.machine.update({
+        await prisma.machines.update({
             where: { id: machine.id },
             data: { status: 'CRITICAL' }
         });

@@ -6,13 +6,9 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Start seeding...');
 
-  // 1. Bersihkan Data Lama (Reset Total)
-  // Urutan delete penting karena foreign key constraints
-  await prisma.alert.deleteMany();
-  await prisma.sensorHistory.deleteMany();
-  // Hapus data di tabel prediction_results jika sudah di-pull (kalau error hapus baris ini)
-  // await prisma.prediction_results.deleteMany(); 
-  await prisma.machine.deleteMany();
+  // 1. Bersihkan Data Lama (Biar tidak duplikat/error)
+  await prisma.alerts.deleteMany();
+  await prisma.machines.deleteMany();
 
   console.log('🧹 Old data cleared.');
 
@@ -52,39 +48,19 @@ async function main() {
     { asetId: "M-20232", name: "Drill Press X1", status: "HEALTHY" }
   ];
 
-  let idCounter = 2; // Mulai dari ID 2
-  for (const m of otherMachines) {
-    const machine = await prisma.machine.create({
+  // 3. Masukkan ke Database
+  for (const m of machinesData) {
+    const machine = await prisma.machines.create({
       data: {
-        id: idCounter++, // Pakai ID urut manual biar rapi
-        asetId: m.asetId,
+        aset_id: m.asetId,
         name: m.name,
         // @ts-ignore
         status: m.status
       }
     });
-    console.log(`✅ Created extra machine: ${machine.asetId}`);
+    console.log(`✅ Created machine: ${machine.aset_id}`);
 
-    // Generate Dummy History Random (Cukup untuk visualisasi dummy)
-    // Kita buat 5 jenis sensor juga biar grafik frontend tidak error
-    const sensorTypes = ['Air_Temp', 'Process_Temp', 'RPM', 'Torque', 'Tool_Wear'];
-    // PERBAIKAN 1: Tambahkan tipe explicit ': any[]' agar TS tidak bingung
-    const dummyHistory: any[] = [];
-    
-    for (let i = 0; i < 10; i++) { // 10 data points per sensor
-      const time = new Date(Date.now() - i * 3600000);
-      sensorTypes.forEach(type => {
-        dummyHistory.push({
-          machineId: machine.id,
-          type: type,
-          value: 100 + Math.random() * 50, // Nilai random
-          timestamp: time
-        });
-      });
-    }
-
-    // @ts-ignore
-    await prisma.sensorHistory.createMany({ data: dummyHistory });
+    // Sensor history dihapus (tidak digunakan)
   }
 
   console.log('✅ Seeding finished successfully.');
