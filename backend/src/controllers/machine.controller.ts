@@ -3,6 +3,30 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+// GET /api/machines/list-lite - Untuk dropdown di dashboard
+export const getMachinesLite = async (req: Request, res: Response) => {
+  try {
+    const machinesList = await prisma.machines.findMany({
+      select: {
+        aset_id: true,
+        name: true
+      },
+      orderBy: { name: 'asc' }
+    });
+
+    // Map ke format yang diinginkan FE (id, name)
+    const formattedList = machinesList.map(machine => ({
+      id: machine.aset_id,
+      name: machine.name
+    }));
+
+    res.json(formattedList);
+  } catch (error) {
+    console.error("Error fetching machines list:", error);
+    res.status(500).json({ error: "Failed to fetch machines list" });
+  }
+};
+
 // GET /api/machines
 export const getMachines = async (req: Request, res: Response) => {
   try {
