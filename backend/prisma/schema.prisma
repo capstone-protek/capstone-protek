@@ -25,9 +25,10 @@ model machines {
   created_at    DateTime        @default(now())
   updated_at    DateTime        @updatedAt
 
-  // Relasi
-  alerts        alerts[]
-  sensor_data   sensor_data[]
+  // Relasi (ONE-TO-MANY)
+  alerts              alerts[]
+  sensor_data         sensor_data[]
+  prediction_results  prediction_results[]
 }
 // Model 2: alerts (match table name)
 model alerts {
@@ -47,9 +48,9 @@ model alerts {
 model sensor_data {
   id                    Int       @id @default(autoincrement())
 
-  // Relasi ke machines via aset_id (string like "M-14850")
-  machine_id            String
-  machine               machines  @relation(fields: [machine_id], references: [aset_id])
+  // Relasi ke machines via id (INTEGER FK - konsisten)
+  machine_id            Int       // FK ke machines.id
+  machine               machines  @relation(fields: [machine_id], references: [id], onDelete: Cascade)
 
   // Kolom Sensor
   type                  String    // Type (L, M, H)
@@ -67,8 +68,12 @@ model sensor_data {
 model prediction_results {
   id                Int       @id @default(autoincrement())
   prediction_time   DateTime  @default(now()) // Waktu prediksi
-  machine_id        String    // Machine_ID (cth: M-14850)
-  risk_probability  String    // Risk_Probability (cth: "78.3%")
+  
+  // Relasi ke machines via id (INTEGER FK - konsisten)
+  machine_id        Int       // FK ke machines.id
+  machine           machines  @relation(fields: [machine_id], references: [id], onDelete: Cascade)
+  
+  risk_probability  Float    // Risk_Probability (cth: "78.3%")
   rul_estimate      String    // RUL_Estimate (cth: "0 Menit Lagi")
   rul_status        String    // RUL_Status (cth: "🚨 CRITICAL")
   rul_minutes_val   Float     // RUL_Minutes (Nilai numerik 0, 162, dsb)

@@ -4,8 +4,9 @@ import { PredictPayload, MLResponse } from '../types';
 
 const prisma = new PrismaClient();
 
-// URL ML API Railway (Sesuai yang sudah dites dan valid)
-const ML_API_URL = 'https://capstone-protek-production.up.railway.app/predict';
+// Use ML API URL from env (fall back to production). Keep no trailing slash.
+const ML_API_BASE = process.env.ML_API_URL || 'https://capstone-protek-production.up.railway.app';
+const ML_API_URL = ML_API_BASE.endsWith('/predict') ? ML_API_BASE : `${ML_API_BASE.replace(/\/$/, '')}/predict`;
 
 export const predictMaintenance = async (req: Request, res: Response) => {
   try {
@@ -56,15 +57,24 @@ export const predictMaintenance = async (req: Request, res: Response) => {
         throw new Error(`ML API Error: ${mlResponse.status} ${mlResponse.statusText}`);
     }
 
-    // Casting ke MLResponse (Tipe data yang baru kita update)
-    const result = await mlResponse.json() as MLResponse;
-    console.log("   ✅ ML Prediction received:", result);
+        // Parse ML JSON (log raw response for debugging)
+        const rawResult = await mlResponse.json();
+        console.log("   ✅ ML Prediction received (raw):", rawResult);
 
-    // 4. LOGIC HAKIM (String Matching)
-    // Cek apakah ada kata "CRITICAL" di RUL_Status atau "FAILURE" di Status
-    // Kita gunakan optional chaining (?.) jaga-jaga kalau field null
-    const isCritical = (result.RUL_Status?.includes('CRITICAL')) || 
-                       (result.Status?.includes('FAILURE'));
+        // Normalize/compatibility helper to read either PascalCase or snake_case
+        const f = (obj: any, pascal: string, snake: string) => {
+            if (!obj) return undefined;
+            if (Object.prototype.hasOwnProperty.call(obj, pascal)) return obj[pascal];
+            if (Object.prototype.hasOwnProperty.call(obj, snake)) return obj[snake];
+            return undefined;
+        };
+
+        const result = rawResult as any; // keep using typed shape afterwards
+
+        // 4. LOGIC HAKIM (String Matching)
+        const rulStatus = f(result, 'RUL_Status', 'rul_status') || '';
+        const statusText = f(result, 'Status', 'status') || '';
+        const isCritical = (String(rulStatus).includes('CRITICAL')) || (String(statusText).includes('FAILURE'));
     
     let alertCreated = false;
 
@@ -73,13 +83,15 @@ export const predictMaintenance = async (req: Request, res: Response) => {
         
         // KONSTRUKSI PESAN ALERT YANG AMAN
         // Karena field 'Message' bisa hilang saat failure, kita rakit pesan sendiri
-        let alertMessage = result.Message || "Critical Anomaly Detected"; // Default
+        let alertMessage = f(result, 'Message', 'message') || "Critical Anomaly Detected";
+        const failureType = f(result, 'Failure_Type', 'failure_type');
+        const actionText = f(result, 'Action', 'action');
+        const urgencyText = f(result, 'Urgency', 'urgency');
 
-        if (!result.Message && result.Failure_Type) {
-            // Jika Message kosong tapi ada Failure_Type (Kasus Power Failure)
-            alertMessage = `${result.Failure_Type}: ${result.Action || 'Check Machine Immediately'}`;
-            if (result.Urgency) {
-                alertMessage += ` (${result.Urgency})`;
+        if ((!f(result, 'Message', 'message') || String(f(result, 'Message', 'message')).trim() === '') && failureType) {
+            alertMessage = `${failureType}: ${actionText || 'Check Machine Immediately'}`;
+            if (urgencyText) {
+                alertMessage += ` (${urgencyText})`;
             }
         }
         // Simpan ke Tabel Alert
