@@ -5,6 +5,70 @@ import { DashboardSummaryResponse } from '../types';
 
 const prisma = new PrismaClient();
 
+// GET /api/dashboard/stats - Dashboard Statistics (4 Cards)
+export const getDashboardStats = async (req: Request, res: Response) => {
+  try {
+    // 1. Total Machines - COUNT(*) dari tabel machines
+    const totalMachines = await prisma.machines.count();
+
+    // 2. Today's Alerts - COUNT(*) dari tabel alerts dimana created_at = hari ini
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const todaysAlerts = await prisma.alerts.count({
+      where: {
+        timestamp: {
+          gte: today
+        }
+      }
+    });
+
+    // 3. Critical Machines - COUNT(*) dari tabel prediction_results 
+    // (ambil row terbaru tiap mesin) dimana pred_status = 'Potential Failure'
+    // Logic: Ambil latest prediction per machine_id yang memiliki status 'Potential Failure'
+    const criticalPredictions = await prisma.prediction_results.findMany({
+      // Ambil semua predictions
+      select: {
+        machine_id: true,
+        pred_status: true,
+        prediction_time: true
+      },
+      orderBy: {
+        prediction_time: 'desc'
+      }
+    });
+
+    // Group by machine_id dan ambil yang terbaru (sudah sorted desc)
+    const latestPredictionPerMachine = new Map();
+    criticalPredictions.forEach(pred => {
+      if (!latestPredictionPerMachine.has(pred.machine_id)) {
+        latestPredictionPerMachine.set(pred.machine_id, pred);
+      }
+    });
+
+    // Hitung mesin yang critical (pred_status contains 'Potential Failure')
+    const criticalMachines = Array.from(latestPredictionPerMachine.values()).filter(
+      pred => pred.pred_status?.includes('Potential Failure')
+    ).length;
+
+    // 4. System Health - (Total Mesin - Critical Mesin) / Total Mesin * 100%
+    const systemHealth = totalMachines > 0 
+      ? Math.round(((totalMachines - criticalMachines) / totalMachines) * 100)
+      : 100;
+
+    res.json({
+      total_machines: totalMachines,
+      todays_alerts: todaysAlerts,
+      critical_machines: criticalMachines,
+      system_health: systemHealth
+    });
+
+  } catch (error) {
+    console.error('Error fetching dashboard stats:', error);
+    res.status(500).json({ error: 'Failed to fetch dashboard stats' });
+  }
+};
+
 export const getDashboardSummary = async (req: Request, res: Response) => {
   try {
     // 1. Hitung Total Mesin
