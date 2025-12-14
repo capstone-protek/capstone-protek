@@ -1,140 +1,234 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-// Import tipe response agar sinkron dengan Frontend
-import { DashboardSummaryResponse } from '../types'; 
 
 const prisma = new PrismaClient();
 
-// GET /api/dashboard/stats - Dashboard Statistics (4 Cards)
-export const getDashboardStats = async (req: Request, res: Response) => {
+/**
+ * GET /api/dashboard/chart-history
+ * Fetch the last 50 data points for the main chart (sensor_data + prediction_results)
+ */
+export const getChartHistory = async (req: Request, res: Response) => {
   try {
-    // 1. Total Machines - COUNT(*) dari tabel machines
-    const totalMachines = await prisma.machines.count();
+    const machineAsetId = (req.query.machineId as string) || 'M-14850';
 
-    // 2. Today's Alerts - COUNT(*) dari tabel alerts dimana created_at = hari ini
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const todaysAlerts = await prisma.alerts.count({
-      where: {
-        timestamp: {
-          gte: today
-        }
-      }
+    // Lookup numeric machine_id from aset_id
+    const machine = await prisma.machines.findUnique({
+      where: { aset_id: machineAsetId },
+      select: { id: true }
     });
 
-    // 3. Critical Machines - COUNT(*) dari tabel prediction_results 
-    // (ambil row terbaru tiap mesin) dimana pred_status = 'Potential Failure'
-    // Logic: Ambil latest prediction per machine_id yang memiliki status 'Potential Failure'
-    const criticalPredictions = await prisma.prediction_results.findMany({
-      // Ambil semua predictions
-      select: {
-        machine_id: true,
-        pred_status: true,
-        prediction_time: true
-      },
-      orderBy: {
-        prediction_time: 'desc'
-      }
+    if (!machine) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Machine not found',
+      });
+    }
+
+    const machineId = machine.id;
+
+    // Use $queryRaw to JOIN sensor_data and prediction_results
+    // ON s.machine_id = p.machine_id AND s.insertion_time = p.prediction_time
+    const results = await prisma.$queryRaw<
+      Array<{
+        time: Date;
+        val_torque: number;
+        val_rpm: number;
+        val_temp: number;
+        status: string;
+        risk: string;
+      }>
+    >`
+      SELECT
+        s.insertion_time AS time,
+        s.torque_nm AS val_torque,
+        s.rotational_speed_rpm AS val_rpm,
+        s.air_temperature_k AS val_temp,
+        COALESCE(p.pred_status, 'NORMAL') AS status,
+        COALESCE(p.risk_probability, '0%') AS risk
+      FROM sensor_data s
+      LEFT JOIN prediction_results p
+        ON s.machine_id = p.machine_id
+        AND s.insertion_time = p.prediction_time
+      WHERE s.machine_id = ${machineId}
+      ORDER BY s.insertion_time DESC
+      LIMIT 50
+    `;
+
+    // Reverse to get chronological order
+    const reversed = results.reverse();
+
+    return res.json({
+      status: 'success',
+      machine_id: machineAsetId,
+      count: reversed.length,
+      data: reversed,
     });
-
-    // Group by machine_id dan ambil yang terbaru (sudah sorted desc)
-    const latestPredictionPerMachine = new Map();
-    criticalPredictions.forEach(pred => {
-      if (!latestPredictionPerMachine.has(pred.machine_id)) {
-        latestPredictionPerMachine.set(pred.machine_id, pred);
-      }
-    });
-
-    // Hitung mesin yang critical (pred_status contains 'Potential Failure')
-    const criticalMachines = Array.from(latestPredictionPerMachine.values()).filter(
-      pred => pred.pred_status?.includes('Potential Failure')
-    ).length;
-
-    // 4. System Health - (Total Mesin - Critical Mesin) / Total Mesin * 100%
-    const systemHealth = totalMachines > 0 
-      ? Math.round(((totalMachines - criticalMachines) / totalMachines) * 100)
-      : 100;
-
-    res.json({
-      total_machines: totalMachines,
-      todays_alerts: todaysAlerts,
-      critical_machines: criticalMachines,
-      system_health: systemHealth
-    });
-
   } catch (error) {
-    console.error('Error fetching dashboard stats:', error);
-    res.status(500).json({ error: 'Failed to fetch dashboard stats' });
+    console.error('❌ Dashboard Chart History Error:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Failed to fetch chart history',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
   }
 };
 
-export const getDashboardSummary = async (req: Request, res: Response) => {
+/**
+ * GET /api/dashboard/chart-latest
+ * Fetch the latest data point for realtime polling (every 1s)
+ */
+export const getChartLatest = async (req: Request, res: Response) => {
   try {
-    // 1. Hitung Total Mesin
-    const totalMachines = await prisma.machines.count();
+    const machineAsetId = (req.query.machineId as string) || 'M-14850';
 
-    // 2. Hitung Mesin "Bermasalah" (CRITICAL atau WARNING)
-    // Logic: Kalau ada 1 mesin warning, dashboard harus kasih sinyal.
-    const criticalMachines = await prisma.machines.count({
-      where: {
-        status: {
-          in: ['CRITICAL', 'WARNING'] 
-        }
-      }
+    // Lookup numeric machine_id from aset_id
+    const machine = await prisma.machines.findUnique({
+      where: { aset_id: machineAsetId },
+      select: { id: true }
     });
 
-    // 3. Hitung Alert Hari Ini (Start of Day 00:00)
+    if (!machine) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Machine not found',
+      });
+    }
+
+    const machineId = machine.id;
+
+    // Same JOIN logic but LIMIT 1, ORDER DESC to get the latest
+    const results = await prisma.$queryRaw<
+      Array<{
+        time: Date;
+        val_torque: number;
+        val_rpm: number;
+        val_temp: number;
+        status: string;
+        risk: string;
+      }>
+    >`
+      SELECT
+        s.insertion_time AS time,
+        s.torque_nm AS val_torque,
+        s.rotational_speed_rpm AS val_rpm,
+        s.air_temperature_k AS val_temp,
+        COALESCE(p.pred_status, 'NORMAL') AS status,
+        COALESCE(p.risk_probability, '0%') AS risk
+      FROM sensor_data s
+      LEFT JOIN prediction_results p
+        ON s.machine_id = p.machine_id
+        AND s.insertion_time = p.prediction_time
+      WHERE s.machine_id = ${machineId}
+      ORDER BY s.insertion_time DESC
+      LIMIT 1
+    `;
+
+    const latest = results.length > 0 ? results[0] : null;
+
+    return res.json({
+      status: 'success',
+      machine_id: machineAsetId,
+      data: latest,
+    });
+  } catch (error) {
+    console.error('❌ Dashboard Chart Latest Error:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Failed to fetch latest chart data',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+};
+
+/**
+ * GET /api/dashboard/stats
+ * Return counts and metrics for dashboard cards
+ */
+export const getDashboardStats = async (req: Request, res: Response) => {
+  try {
+    // 1. Count total machines
+    const totalMachines = await prisma.machines.count();
+
+    // 2. Count alerts from today (00:00:00 UTC)
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
+    today.setUTCHours(0, 0, 0, 0);
+
     const todaysAlerts = await prisma.alerts.count({
       where: {
         timestamp: {
-          gte: today
-        }
-      }
-    });
-
-    // 4. Ambil 5 Alert Terakhir (Untuk List "Recent Activity")
-    // Kita include 'machine' agar FE bisa tampilkan nama mesinnya
-    const recentAlerts = await prisma.alerts.findMany({
-      take: 5,
-      orderBy: {
-        timestamp: 'desc'
+          gte: today,
+        },
       },
-      include: {
-        machine: {
-          select: {
-            name: true,
-            aset_id: true
-          }
-        }
-      }
     });
 
-    // 5. Kalkulasi Health Score (0 - 100%)
-    // Rumus MVP: 100% dikurangi (15% per mesin yang bermasalah)
-    // Contoh: 2 mesin rusak = 100 - 30 = 70% Health
-    const systemHealth = Math.max(0, 100 - (criticalMachines * 15));
+    // 3. Count critical machines
+    const criticalMachines = await prisma.machines.count({
+      where: {
+        status: 'CRITICAL',
+      },
+    });
 
-    // 6. Susun Response sesuai Kontrak 'DashboardSummaryResponse'
-    const responseData: DashboardSummaryResponse = {
+    // 4. Calculate system health percentage
+    const systemHealth =
+      totalMachines > 0
+        ? ((totalMachines - criticalMachines) / totalMachines) * 100
+        : 100;
+
+    return res.json({
+      status: 'success',
       summary: {
         totalMachines,
         criticalMachines,
         todaysAlerts,
-        systemHealth
+        systemHealth: Math.round(systemHealth * 100) / 100, // Round to 2 decimals
       },
-      // Casting any diperlukan sedikit karena Prisma return Date object, 
-      // sedangkan Interface kita bisa string ISO. Tapi ini aman untuk JSON.
-      recentAlerts: recentAlerts as any 
-    };
-
-    res.json(responseData);
-
+      timestamp: new Date().toISOString(),
+    });
   } catch (error) {
-    console.error('Error fetching dashboard summary:', error);
-    res.status(500).json({ error: 'Failed to fetch dashboard summary' });
+    console.error('❌ Dashboard Stats Error:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Failed to fetch dashboard stats',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+};
+
+/**
+ * GET /api/dashboard/alerts
+ * Fetch recent alerts with machine information
+ */
+export const getRecentAlerts = async (req: Request, res: Response) => {
+  try {
+    const limit = parseInt(req.query.limit as string) || 10;
+
+    const alerts = await prisma.alerts.findMany({
+      include: {
+        machine: {
+          select: {
+            aset_id: true,
+            name: true,
+            status: true,
+          },
+        },
+      },
+      orderBy: {
+        timestamp: 'desc',
+      },
+      take: limit,
+    });
+
+    return res.json({
+      status: 'success',
+      count: alerts.length,
+      data: alerts,
+    });
+  } catch (error) {
+    console.error('❌ Fetch Recent Alerts Error:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Failed to fetch recent alerts',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
   }
 };

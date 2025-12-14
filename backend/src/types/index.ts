@@ -1,9 +1,9 @@
 /*
  * ==========================================================
- * KONTRAK API FINAL (RAILWAY - SAFETY PATCH)
+ * KONTRAK API FINAL (RAILWAY - DASHBOARD + SIMULATION)
  * ==========================================================
- * Update: Menyesuaikan fakta bahwa beberapa field ML API
- * bisa hilang tergantung kondisi (Normal vs Critical).
+ * Update: Menambahkan Dashboard, Simulation, dan Machine response types
+ * berdasarkan endpoint baru yang telah diimplementasikan.
  * ==========================================================
  */
 
@@ -22,7 +22,7 @@ export interface PredictPayload {
 }
 
 // ==========================================================
-// 2. OUTPUT DATA (MATCHING POSTMAN IMAGE_B2FCDF)
+// 2. OUTPUT DATA FROM ML API (MATCHING POSTMAN)
 // ==========================================================
 
 export interface MLResponse {
@@ -36,7 +36,6 @@ export interface MLResponse {
   Status: string;           // "⚠️ CRITICAL FAILURE DETECTED"
 
   // Field Opsional (Tergantung Normal vs Critical)
-  // Di screenshot 'Critical', Message & Recommendation TIDAK MUNCUL.
   Message?: string;         
   Recommendation?: string;  
 
@@ -54,43 +53,120 @@ export type MachineStatus = 'CRITICAL' | 'WARNING' | 'HEALTHY' | 'OFFLINE';
 export type AlertSeverity = 'CRITICAL' | 'WARNING' | 'INFO';
 
 // ==========================================================
-// 4. RESPONSE DATA (FE CONSUMPTION)
+// 4. DASHBOARD TYPES
 // ==========================================================
 
+// Chart data point (from sensor_data + prediction_results join)
+export interface ChartDataPoint {
+  time: string;           // ISO datetime (insertion_time)
+  val_torque: number;     // torque_nm
+  val_rpm: number;        // rotational_speed_rpm
+  val_temp: number;       // air_temperature_k
+  status: string;         // pred_status from prediction_results
+  risk: string;           // risk_probability from prediction_results
+}
+
+// Chart history response
+export interface ChartHistoryResponse {
+  status: 'success' | 'error';
+  machine_id: string;
+  data: ChartDataPoint[];
+  count: number;
+  error?: string;
+}
+
+// Chart latest response
+export interface ChartLatestResponse {
+  status: 'success' | 'error';
+  machine_id: string;
+  data: ChartDataPoint | null;
+  error?: string;
+}
+
+// Dashboard stats response
+export interface DashboardStatsResponse {
+  status: 'success' | 'error';
+  summary: {
+    totalMachines: number;
+    criticalMachines: number;
+    todaysAlerts: number;
+    systemHealth: number; // percentage (0-100)
+  };
+  timestamp: string; // ISO datetime
+  error?: string;
+}
+
+// Alert data
 export interface AlertData {
   id: number;
   message: string;
   severity: string;
   timestamp: Date | string; 
-  machine: {
+  machine_id: number;
+  machine?: {
+    id: number;
+    aset_id: string;
     name: string;
-    asetId: string;
+    status: MachineStatus;
   };
 }
 
-export interface DashboardSummaryResponse {
-  summary: {
-    totalMachines: number;
-    criticalMachines: number;
-    todaysAlerts: number;
-    systemHealth: number;
-  };
-  recentAlerts: AlertData[];
+// Recent alerts response
+export interface RecentAlertsResponse {
+  status: 'success' | 'error';
+  data: AlertData[];
+  count: number;
+  error?: string;
 }
+
+// ==========================================================
+// 5. MACHINE TYPES
+// ==========================================================
 
 export interface MachineDetailResponse {
   id: number;
-  asetId: string;
+  aset_id: string;
   name: string;
   status: MachineStatus;
-  createdAt: string;
-  updatedAt: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
-// Sensor history types removed (not used)
+export interface MachineHistoryItem {
+  machineId: string;
+  timestamp: string;
+  air_temperature_k: number;
+  process_temperature_k: number;
+  rotational_speed_rpm: number;
+  torque_nm: number;
+  tool_wear_min: number;
+  type: string;
+}
 
 // ==========================================================
-// 5. API RESPONSE WRAPPERS
+// 6. SIMULATION TYPES
+// ==========================================================
+
+export interface SimulationStatusResponse {
+  status: 'success' | 'error';
+  isRunning: boolean;
+  timestamp?: string;
+  message?: string;
+}
+
+export interface SimulationControlRequest {
+  action: 'start' | 'pause' | 'stop';
+}
+
+export interface SimulationControlResponse {
+  status: 'success' | 'error';
+  message: string;
+  isRunning: boolean;
+  timestamp?: string;
+}
+
+// ==========================================================
+// 7. PREDICT RESPONSE (FE CONSUMPTION)
 // ==========================================================
 
 export interface PredictResponseFE {
@@ -98,4 +174,5 @@ export interface PredictResponseFE {
   input_saved: boolean;
   ml_result: MLResponse;
   alert_created?: boolean;
+  error?: string;
 }

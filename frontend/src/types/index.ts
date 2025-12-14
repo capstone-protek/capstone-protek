@@ -1,197 +1,158 @@
-/*
- * ==========================================================
- * KONTRAK API v2 (VALID) - Proyek A25-CS050
- * ==========================================================
- * Ini adalah satu-satunya sumber kebenaran.
- * Tim Backend WAJIB mengembalikan data sesuai interface ini.
- * Tim Frontend WAJIB membaca data sesuai interface ini.
- *
- * File ini HARUS disalin-tempel ke:
- * 1. /backend/src/types/index.ts
- * 2. /frontend/src/types/index.ts
- * ==========================================================
- */
-
-// ==========================================================
-// 1. TIPE DATA & ENUM BERSAMA
-// ==========================================================
-
 /**
- * Prioritas Peringatan.
- * Dihitung oleh logika bisnis di Backend berdasarkan probabilitas ML.
+ * SYNCHRONIZED API CONTRACTS - Frontend & Backend
+ * Capstone Project A25-CS050
+ * Last synced: 2025-12-14
+ * 
+ * This is the single source of truth for all API contracts.
+ * Both backend/src/types/index.ts and frontend/src/types/index.ts must match exactly.
  */
-export type AlertPriority = 'KRITIS' | 'TINGGI' | 'SEDANG' | 'RENDAH';
-
-/**
- * Status Kesehatan Mesin.
- * Dihitung oleh logika bisnis di Backend.
- */
-export type MachineStatus = 'HEALTHY' | 'WARNING' | 'CRITICAL' | 'OFFLINE';
 
 // ==========================================================
-// 2. KONTRAK INTERNAL (ML-KE-BE)
+// PREDICTION TYPES (ML Integration)
 // ==========================================================
-// Ini adalah kontrak yang DIKONSUMSI oleh Backend dari API ML (FastAPI)
 
-/**
- * Body request yang dikirim BE ke ML API (POST /predict)
- */
-export interface PredictRequestML {
-  asetId: string;
-  airTemp: number;
-  processTemp: number;
-  rpm: number;
-  torque: number;
-  toolWear: number;
+export interface PredictPayload {
+  Machine_ID: string;
+  Type: string;
+  Air_Temp: number;
+  Process_Temp: number;
+  RPM: number;
+  Torque: number;
+  Tool_Wear: number;
 }
 
-/**
- * Body response yang diterima BE dari ML API (POST /predict)
- */
-export interface PredictResponseML {
-  asetId: string;
-  failureType: string; // Misal: "No Failure", "Tool Wear Failure", "Overheat"
-  probability: number; // Angka 0.0 - 1.0
-}
-
-// ==========================================================
-// 3. KONTRAK UTAMA (BE-KE-FE)
-// ==========================================================
-// Ini adalah kontrak yang DISEDIAKAN oleh Backend (Express) untuk Frontend (React)
-
-/**
- * Struktur data utama untuk sebuah Peringatan (Alert).
- *
- * Digunakan di:
- * - GET /api/alerts (sebagai array: Alert[])
- * - GET /api/alerts/:id (sebagai objek tunggal: Alert)
- * - Sebagai bagian dari DashboardSummary
- */
-export interface Alert {
-  id: string; // ID unik untuk peringatan (dibuat oleh BE, misal: UUID)
-  asetId: string; // ID mesin, misal: "M-14850"
-  timestamp: string; // Kapan peringatan ini dibuat (ISO 8601 String)
-
-  // Data Inti dari Model ML
-  diagnosis: string; // Nama kegagalan, misal: "Tool Wear Failure"
-  probabilitas: number; // Angka 0.0 - 1.0 (misal: 0.95)
-
-  // Data yang Diturunkan oleh BE
-  priority: AlertPriority; // Misal: "KRITIS" (jika probabilitas > 0.9)
-
-  // Data pendukung untuk ditampilkan di "Lihat Detail"
-  // Ini adalah "snapshot" sensor saat kegagalan diprediksi
-  sensorDataTerkait: {
-    airTemp: number;
-    processTemp: number;
-    rpm: number;
-    torque: number;
-    toolWear: number;
+export interface MLPredictionResult {
+  status: string;
+  input_saved: boolean;
+  alert_created: boolean;
+  ml_result: {
+    Machine_ID: string;
+    Risk_Probability?: string;
+    RUL_Status: string;
+    Status: string;
+    Failure_Type?: string;
+    Action?: string;
   };
 }
 
-/**
- * Ringkasan untuk halaman Dashboard.
- *
- * Digunakan di:
- * - GET /api/dashboard/summary
- */
-export interface DashboardSummary {
+// ==========================================================
+// DASHBOARD TYPES (Visualization)
+// ==========================================================
+
+export interface ChartDataPoint {
+  time: string;
+  val_torque: number;
+  val_rpm: number;
+  val_temp: number;
+  status: string;
+  risk: string;
+}
+
+export interface ChartHistoryResponse {
+  status: string;
+  machine_id: string;
+  data: ChartDataPoint[];
+  count: number;
+}
+
+export interface ChartLatestResponse {
+  status: string;
+  machine_id: string;
+  data: ChartDataPoint | null;
+}
+
+export interface DashboardStats {
   totalMachines: number;
-  criticalAlertsCount: number;
-  offlineMachinesCount: number;
-  recentCriticalAlerts: Alert[]; // Array dari 3-5 peringatan KRITIS terbaru
+  criticalMachines: number;
+  todaysAlerts: number;
+  systemHealth: number;
 }
 
-/**
- * Ringkasan untuk satu mesin (untuk daftar mesin).
- *
- * Digunakan di:
- * - GET /api/machines (sebagai array: MachineSummary[])
- */
-export interface MachineSummary {
-  asetId: string;
-  name: string; // Nama mesin yang mudah dibaca, misal: "CNC Grinder 01"
-  status: MachineStatus;
+export interface DashboardStatsResponse {
+  status: string;
+  summary: DashboardStats;
+  timestamp: string;
 }
 
-/**
- * Data detail untuk satu mesin (untuk halaman detail mesin).
- *
- * Digunakan di:
- * - GET /api/machines/:id
- */
-export interface MachineDetails {
-  asetId: string;
+// ==========================================================
+// ALERT TYPES
+// ==========================================================
+
+export interface AlertData {
+  id: number;
+  message: string;
+  severity: 'CRITICAL' | 'WARNING' | 'INFO';
+  timestamp: string;
+  machine_id: number;
+  machine?: {
+    id: number;
+    aset_id: string;
+    name: string;
+    status: 'CRITICAL' | 'WARNING' | 'HEALTHY' | 'OFFLINE';
+  };
+}
+
+export interface RecentAlertsResponse {
+  status: string;
+  data: AlertData[];
+  count: number;
+}
+
+// ==========================================================
+// MACHINE TYPES
+// ==========================================================
+
+export interface Machine {
+  id: number;
+  aset_id: string;
   name: string;
-  status: MachineStatus;
-  lastReading: {
-    timestamp: string; // ISO 8601 String
-    airTemp: number;
-    processTemp: number;
-    rpm: number;
-    torque: number;
-    toolWear: number;
-  };
+  status: 'CRITICAL' | 'WARNING' | 'HEALTHY' | 'OFFLINE';
+  created_at: string;
+  updated_at: string;
 }
 
-/**
- * Struktur data untuk riwayat sensor (untuk grafik).
- *
- * Digunakan di:
- * - GET /api/machines/:id/history
- */
-export interface SensorHistory {
-  asetId: string;
-  readings: {
-    timestamp: string; // ISO 8601 String
-    torque: number;
-    toolWear: number;
-    rpm: number;
-    processTemp: number;
-    airTemp: number;
-  }[]; // Array dari data time-series historis
+export interface MachineHistoryItem {
+  machineId: string;
+  timestamp: string;
+  air_temperature_k: number;
+  rotational_speed_rpm: number;
+  torque_nm: number;
+  tool_wear_min: number;
 }
 
-/**
- * Body request untuk endpoint prediksi (simulasi data real-time).
- *
- * Digunakan di:
- * - POST /api/predict
- */
-export interface PredictRequestBodyFE {
-  asetId: string;
-  airTemp: number;
-  processTemp: number;
-  rpm: number;
-  torque: number;
-  toolWear: number;
+export interface MachineDetailResponse {
+  id: number;
+  aset_id: string;
+  name: string;
+  status: 'CRITICAL' | 'WARNING' | 'HEALTHY' | 'OFFLINE';
+  created_at: string;
+  updated_at: string;
 }
 
-/**
- * Body response dari endpoint prediksi.
- *
- * Digunakan di:
- * - POST /api/predict
- */
-export interface PredictResponseBodyFE {
-  status: 'OK' | 'ALERT_CREATED'; // 'OK' jika tidak ada kegagalan, 'ALERT_CREATED' jika peringatan baru dibuat
-  alert?: Alert; // Jika status ALERT_CREATED, kembalikan data peringatan baru
+// ==========================================================
+// SIMULATION TYPES
+// ==========================================================
+
+export interface SimulationStatusResponse {
+  status: string;
+  isRunning: boolean;
+  timestamp: string;
 }
 
-/**
- * Body response dari Chatbot Sederhana.
- *
- * Dig"unakan di:
- * - GET /api/chat?q=...
- */
-export interface ChatResponseBody {
-  query: string; // Pertanyaan asli dari user
-  response: string; // Jawaban dalam bentuk teks sederhana
-  
-  // Opsional: Data terstruktur agar FE bisa render link/card
-  relatedData?: {
-    type: 'machine' | 'alert';
-    id: string; // asetId or alert.id
-  };
+export interface SimulationControlResponse {
+  status: string;
+  message: string;
+  isRunning: boolean;
+  timestamp: string;
+}
+
+// ==========================================================
+// API RESPONSE WRAPPER
+// ==========================================================
+
+export interface ApiResponse<T> {
+  status: 'success' | 'error';
+  data?: T;
+  error?: string;
+  timestamp?: string;
 }

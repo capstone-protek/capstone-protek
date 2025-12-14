@@ -91,23 +91,23 @@ export const getMachineHistory = async (req: Request, res: Response) => {
   }
 
   try {
-    let machineAsetId: string;
+    let machineId: number;
 
     if (!isNaN(Number(id))) {
-      // If numeric ID, lookup aset_id
-      const machine = await prisma.machines.findUnique({
-        where: { id: Number(id) },
-        select: { aset_id: true }
-      });
-      if (!machine) return res.status(404).json({ error: "Machine for history not found" });
-      machineAsetId = machine.aset_id;
+      // If numeric ID, use directly
+      machineId = Number(id);
     } else {
-      // If string (e.g., M-14850), use directly
-      machineAsetId = String(id);
+      // If string (e.g., M-14850), lookup numeric ID from aset_id
+      const machine = await prisma.machines.findUnique({
+        where: { aset_id: String(id) },
+        select: { id: true }
+      });
+      if (!machine) return res.status(404).json({ error: "Machine not found" });
+      machineId = machine.id;
     }
 
     const rows = await prisma.sensor_data.findMany({
-      where: { machine_id: machineAsetId },
+      where: { machine_id: machineId },
       take: 100,
       orderBy: { insertion_time: 'desc' }
     });
