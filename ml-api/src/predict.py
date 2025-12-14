@@ -234,7 +234,7 @@ class MaintenanceModel:
             estimated_hours = max(0.5, min(24, estimated_hours))
             estimated_mins = int(estimated_hours * 60)
             
-            return estimated_mins
+            return int(estimated_hours), estimated_mins
             
         except Exception as e:
             print(f"⚠️ [RUL Fallback] Error in calculation: {e}")
