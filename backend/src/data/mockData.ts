@@ -12,9 +12,12 @@ export const MOCK_ALERTS: AlertData[] = [
     message: "Potential Tool Wear Failure Detected",
     severity: "CRITICAL",
     timestamp: new Date().toISOString(),
+    machine_id: 1,
     machine: {
+      id: 1,
       name: "CNC Milling Machine 01",
-      asetId: "M-001"
+      aset_id: "M-001",
+      status: "HEALTHY" as MachineStatus
     }
   },
   {
@@ -22,9 +25,12 @@ export const MOCK_ALERTS: AlertData[] = [
     message: "Overheating Warning",
     severity: "WARNING",
     timestamp: new Date(Date.now() - 3600000).toISOString(), // 1 jam lalu
+    machine_id: 2,
     machine: {
+      id: 2,
       name: "Hydraulic Press 50T",
-      asetId: "M-002"
+      aset_id: "M-002",
+      status: "WARNING" as MachineStatus
     }
   },
   {
@@ -32,9 +38,12 @@ export const MOCK_ALERTS: AlertData[] = [
     message: "Vibration Anomaly detected",
     severity: "INFO",
     timestamp: new Date(Date.now() - 86400000).toISOString(), // 1 hari lalu
+    machine_id: 3,
     machine: {
+      id: 3,
       name: "CNC Lathe 03",
-      asetId: "M-003"
+      aset_id: "M-003",
+      status: "HEALTHY" as MachineStatus
     }
   }
 ];
@@ -43,18 +52,26 @@ export const MOCK_ALERTS: AlertData[] = [
 export const MOCK_MACHINES = [
     {
         id: 1,
-        asetId: "M-001",
+        aset_id: "M-001",
         name: "CNC Milling Machine 01",
         status: "HEALTHY" as MachineStatus,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
     },
     {
         id: 2,
-        asetId: "M-002",
+        aset_id: "M-002",
         name: "Hydraulic Press 50T",
         status: "WARNING" as MachineStatus,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+    },
+    {
+        id: 3,
+        aset_id: "M-003",
+        name: "CNC Lathe 03",
+        status: "HEALTHY" as MachineStatus,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
     }
 ];
