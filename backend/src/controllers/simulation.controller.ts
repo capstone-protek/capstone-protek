@@ -1,9 +1,19 @@
 import { Request, Response } from 'express';
 
-// Base URL ML dari env atau default
-// Pastikan tidak ada trailing slash '/' di sini untuk konsistensi
-const ML_API_URL =
-  process.env.ML_API_URL || 'https://capstone-protek-production.up.railway.app';
+// ============================================================
+// ML SERVICE CONFIGURATION
+// ============================================================
+// LOCAL: http://localhost:8000 (untuk development & testing)
+// PROD:  https://capstone-protek-production.up.railway.app (production)
+
+const ML_SERVICE_ENV = process.env.ML_SERVICE_ENV || 'local';
+const LOCAL_ML_URL = 'http://localhost:8000';
+const PRODUCTION_ML_URL = 'https://capstone-protek-production.up.railway.app';
+
+// Default ke local jika tidak ada env var
+const ML_API_URL = process.env.ML_API_URL || LOCAL_ML_URL;
+
+console.log(`[Simulation Controller] Initialized with ML_SERVICE_ENV=${ML_SERVICE_ENV}, ML_API_URL=${ML_API_URL}`);
 
 /**
  * POST /api/simulation/start
@@ -44,12 +54,13 @@ export async function startSimulation(req: Request, res: Response) {
       console.warn(`[Simulation] ML API returned error status: ${response.status}`);
       return res.status(response.status).json(data);
     }
-  } catch (error: any) {
-    console.error('[Simulation] Error starting simulation:', error);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('[Simulation] Error starting simulation:', errorMessage);
     return res.status(500).json({
       status: 'error',
       message: 'Failed to trigger simulation start',
-      error: error.message,
+      error: errorMessage,
       hint: 'Ensure ML_API_URL is correct and the Python endpoint exists.'
     });
   }
@@ -81,12 +92,13 @@ export async function stopSimulation(req: Request, res: Response) {
     } else {
       return res.status(response.status).json(data);
     }
-  } catch (error: any) {
-    console.error('[Simulation] Error stopping simulation:', error);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('[Simulation] Error stopping simulation:', errorMessage);
     return res.status(500).json({
       status: 'error',
       message: 'Failed to trigger simulation stop',
-      error: error.message,
+      error: errorMessage,
     });
   }
 }
@@ -102,12 +114,13 @@ export async function getSimulationStatus(req: Request, res: Response) {
       message: 'Simulation functionality is ready (Trigger Mode)',
       note: 'Ensure Python backend has /api/start-simulation endpoint'
     });
-  } catch (error: any) {
-    console.error('Error getting simulation status:', error);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('Error getting simulation status:', errorMessage);
     return res.status(500).json({
       status: 'error',
       message: 'Failed to get simulation status',
-      error: error.message,
+      error: errorMessage,
     });
   }
 }
