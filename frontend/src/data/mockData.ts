@@ -59,14 +59,14 @@ export const mockAlerts: AlertData[] = [
   },
 ];
 
-export const mockDashboardSummary: DashboardSummary = {
+export const mockDashboardSummary: DashboardSummaryResponse = {
   totalMachines: 25,
   criticalAlertsCount: 3,
   offlineMachinesCount: 1,
   recentCriticalAlerts: mockAlerts.filter((a) => a.priority === "KRITIS"),
 };
 
-export const mockMachines: MachineSummary[] = [
+export const mockMachines: mach[] = [
   {
     asetId: "M-14850",
     name: "CNC Grinder 01",

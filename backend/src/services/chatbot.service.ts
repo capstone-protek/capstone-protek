@@ -31,8 +31,8 @@ class ChatbotService {
 
 
     // 1. Ambil Data Mesin
-    const machines = await prisma.machine.findMany({
-      select: { id: true, asetId: true, name: true, status: true }
+    const machines = await prisma.machines.findMany({
+      select: { id: true, aset_id: true, name: true, status: true }
     });
 
     // 2. Ambil Prediksi ML Terakhir
@@ -44,7 +44,7 @@ class ChatbotService {
     });
 
     // 3. Ambil Alerts Critical Terbaru
-    const alerts = await prisma.alert.findMany({
+    const alerts = await prisma.alerts.findMany({
       where: { severity: "CRITICAL" },
       take: 3,
       orderBy: { timestamp: 'desc' },
@@ -56,7 +56,7 @@ class ChatbotService {
       // ✅ PERBAIKAN 2: Typo variabel di .find()
       // Sebelumnya: .find(m => p.machine_id ...) <- 'p' tidak dikenal
       // Sekarang:   .find(p => p.machine_id ...) <- 'p' didefinisikan sebagai parameter
-      const prediction = rawPredictions.find(p => p.machine_id === m.asetId);
+      const prediction = rawPredictions.find(p => p.machine_id === m.aset_id);
 
       let mlData = "Belum ada data ML";
       
@@ -70,7 +70,7 @@ class ChatbotService {
 
       return {
         mesin: m.name,
-        kode: m.asetId,
+        kode: m.aset_id,
         status_saat_ini: m.status,
         prediksi_ml: mlData
       };
