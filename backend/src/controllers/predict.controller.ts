@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import axios from 'axios';
 import { PredictPayload, MLResponse } from '../types';
 
 const prisma = new PrismaClient();
@@ -31,7 +32,7 @@ export const predictMaintenance = async (req: Request, res: Response) => {
     }
 
     // 3. Kirim Data ke ML API (Railway)
-    console.log(`   📡 Sending to ML API...`);
+    console.log(`   📡 Sending to ML API at ${ML_API_URL}...`);
     
     // Transform data to snake_case format expected by ML API
     const mlPayload = {
@@ -44,22 +45,16 @@ export const predictMaintenance = async (req: Request, res: Response) => {
         tool_wear: data.Tool_Wear
     };
     
-    const mlResponse = await fetch(ML_API_URL, {
-        method: 'POST',
+    const mlResponse = await axios.post(ML_API_URL, mlPayload, {
         headers: { 
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
+            'Content-Type': 'application/json'
         },
-        body: JSON.stringify(mlPayload)
+        timeout: 10000
     });
 
-    if (!mlResponse.ok) {
-        throw new Error(`ML API Error: ${mlResponse.status} ${mlResponse.statusText}`);
-    }
-
-        // Parse ML JSON (log raw response for debugging)
-        const rawResult = await mlResponse.json();
-        console.log("   ✅ ML Prediction received (raw):", rawResult);
+    // Parse ML JSON (log raw response for debugging)
+    const rawResult = mlResponse.data;
+    console.log("   ✅ ML Prediction received (raw):", rawResult);
 
         // Normalize/compatibility helper to read either PascalCase or snake_case
         const f = (obj: any, pascal: string, snake: string) => {
@@ -125,7 +120,12 @@ export const predictMaintenance = async (req: Request, res: Response) => {
     });
 
   } catch (error) {
-    console.error('❌ Predict Error:', error);
-    res.status(500).json({ error: "Failed to process prediction request" });
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('❌ Predict Error:', errorMessage);
+    console.error('❌ Full Error:', error);
+    res.status(500).json({ 
+      error: "Failed to process prediction request",
+      details: errorMessage
+    });
   }
 };

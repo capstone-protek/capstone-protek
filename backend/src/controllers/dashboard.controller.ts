@@ -35,7 +35,7 @@ export const getChartHistory = async (req: Request, res: Response) => {
         val_rpm: number;
         val_temp: number;
         status: string;
-        risk: string;
+        risk: number;
       }>
     >`
       SELECT
@@ -44,7 +44,7 @@ export const getChartHistory = async (req: Request, res: Response) => {
         s.rotational_speed_rpm AS val_rpm,
         s.air_temperature_k AS val_temp,
         COALESCE(p.pred_status, 'NORMAL') AS status,
-        COALESCE(p.risk_probability, '0%') AS risk
+        COALESCE(p.risk_probability, 0) AS risk
       FROM sensor_data s
       LEFT JOIN prediction_results p
         ON s.machine_id = p.machine_id
@@ -104,7 +104,7 @@ export const getChartLatest = async (req: Request, res: Response) => {
         val_rpm: number;
         val_temp: number;
         status: string;
-        risk: string;
+        risk: number;
       }>
     >`
       SELECT
@@ -113,7 +113,7 @@ export const getChartLatest = async (req: Request, res: Response) => {
         s.rotational_speed_rpm AS val_rpm,
         s.air_temperature_k AS val_temp,
         COALESCE(p.pred_status, 'NORMAL') AS status,
-        COALESCE(p.risk_probability, '0%') AS risk
+        COALESCE(p.risk_probability, 0) AS risk
       FROM sensor_data s
       LEFT JOIN prediction_results p
         ON s.machine_id = p.machine_id
