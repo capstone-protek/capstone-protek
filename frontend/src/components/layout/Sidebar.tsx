@@ -1,13 +1,12 @@
-import { NavLink, Link } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import { 
   LayoutDashboard, 
   AlertTriangle, 
   Settings, 
   Activity, 
   MessageSquare, 
-  HelpCircle,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/protek-logo.svg";
@@ -18,101 +17,108 @@ interface SidebarProps {
   toggleSidebar: () => void;
 }
 
-const navigation = [
+const mainNavigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Alerts", href: "/alerts", icon: AlertTriangle },
   { name: "Machines", href: "/machines", icon: Activity },
   { name: "Copilot", href: "/chat", icon: MessageSquare },
-  { name: "Settings", href: "/settings", icon: Settings },
 ];
 
 export function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
   return (
     <aside 
       className={cn(
-        "fixed inset-y-0 left-0 z-40 flex flex-col border-r border-border bg-card shadow-sm transition-all duration-300 ease-in-out",
-        isCollapsed ? "w-[70px]" : "w-64"
+        "fixed left-4 top-4 bottom-4 z-40 flex flex-col rounded-2xl border border-border bg-card shadow-xl transition-all duration-300",
+        isCollapsed ? "w-[72px]" : "w-64"
       )}
     >
-      {/* HEADER LOGO */}
-      <div className="flex h-16 items-center justify-center border-b border-border/50 px-2">
-        <Link to="/" className="flex items-center gap-1 overflow-hidden">
-          {/* Logo Icon Wrapper */}
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center ">
-             <img src={logo} className="h-6 w-6" alt="Logo" />
+      {/* --- HEADER GABUNGAN (Logo + Toggle) --- */}
+      <div className={cn(
+        "flex items-center border-b border-border/50 transition-all duration-300",
+        // LOGIKA UTAMA:
+        // Jika Collapsed: Flex Column (atas-bawah), padding lebih besar (py-4)
+        // Jika Expanded: Flex Row (kiri-kanan), tinggi fix (h-16), justify-between
+        isCollapsed 
+          ? "flex-col justify-center py-4 gap-4" 
+          : "flex-row h-16 px-4 justify-between"
+      )}>
+        
+        {/* 1. BAGIAN LOGO */}
+        <div className={cn("flex items-center gap-3", isCollapsed && "justify-center")}>
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center text-primary">
+               <img src={logo} className="h-10 w-10" alt="Logo" />
           </div>
           
-          {/* Logo Text */}
-          <div className={cn(
-            "flex flex-col overflow-hidden transition-all duration-300",
-            isCollapsed ? "w-0 opacity-0 hidden" : "w-auto opacity-100 pl-2"
-          )}>
-            <span className="font-bold text-2xl leading-none tracking-tight">Protek</span>
-          </div>
-        </Link>
+          {!isCollapsed && (
+            <div className="overflow-hidden">
+              <h1 className="text-2xl font-semibold text-foreground leading-none">Protek</h1>
+            </div>
+          )}
+        </div>
+
+        {/* 2. TOMBOL TOGGLE (PANEL) */}
+        {/* Saat expanded dia di kanan, saat collapsed dia di bawah logo */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggleSidebar}
+          className={cn(
+            "h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary/80",
+            // Tambahan animasi halus saat pindah posisi
+            isCollapsed ? "mt-0" : "ml-auto"
+          )}
+        >
+          {isCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+        </Button>
+
       </div>
 
-      {/* NAVIGATION ITEMS */}
-      <nav className="flex-1 flex flex-col gap-1 px-3 py-6 overflow-x-hidden">
-        {navigation.map((item) => (
+      {/* --- NAVIGATION ITEMS --- */}
+      <nav className="flex-1 space-y-1 px-3 py-2 overflow-y-auto overflow-x-hidden">
+        {mainNavigation.map((item) => (
           <NavLink
             key={item.name}
             to={item.href}
+            title={isCollapsed ? item.name : undefined}
             className={({ isActive }) =>
               cn(
-                "group flex items-center rounded-md px-3 py-2.5 text-sm font-medium transition-all duration-200 ease-in-out relative",
-                isActive 
-                  ? "bg-primary text-primary-foreground shadow-md" 
-                  : "text-muted-foreground hover:bg-secondary hover:text-foreground",
-                isCollapsed ? "justify-center px-0" : "justify-start gap-3"
+                "group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                isCollapsed && "justify-center px-2",
+                isActive
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-secondary hover:text-foreground"
               )
             }
-            title={isCollapsed ? item.name : ""} // Tooltip native browser sederhana
           >
-            <item.icon className={cn("h-5 w-5 shrink-0 transition-transform group-hover:scale-105", isCollapsed && "h-6 w-6")} />
-            
-            <span className={cn(
-              "whitespace-nowrap transition-all duration-300 overflow-hidden",
-              isCollapsed ? "w-0 opacity-0 hidden" : "w-auto opacity-100"
-            )}>
-              {item.name}
-            </span>
+            <item.icon className="h-5 w-5 shrink-0 transition-colors" />
+            {!isCollapsed && (
+               <span className="flex-1 text-left whitespace-nowrap overflow-hidden text-ellipsis">
+                 {item.name}
+               </span>
+            )}
           </NavLink>
         ))}
       </nav>
 
-      {/* FOOTER & TOGGLE */}
-      <div className="border-t border-border/50 p-3 space-y-2">
-        <Link
-            to="/support"
-            className={cn(
-              "flex items-center rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-all",
-              isCollapsed ? "justify-center" : "gap-3"
-            )}
-            title="Support"
-        >
-             <HelpCircle className="h-5 w-5 shrink-0" />
-             <span className={cn(
-              "whitespace-nowrap transition-all duration-300 overflow-hidden",
-              isCollapsed ? "w-0 opacity-0 hidden" : "w-auto opacity-100"
-            )}>
-              Support
-            </span>
-        </Link>
+      {/* --- BOTTOM SECTION --- */}
+      <div className="border-t border-border px-3 py-2 space-y-1">
 
-        {/* Toggle Button */}
-        <Button
-            variant="ghost"
-            size="sm"
-            onClick={toggleSidebar}
-            className={cn(
-                "w-full flex items-center text-muted-foreground hover:text-foreground mt-2",
-                isCollapsed ? "justify-center" : "justify-between px-3"
-            )}
+        <NavLink
+            to="/settings"
+            title={isCollapsed ? "Settings" : undefined}
+            className={({ isActive }) =>
+              cn(
+                "group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                isCollapsed && "justify-center px-2",
+                isActive
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+              )
+            }
         >
-            {!isCollapsed && <span className="text-xs">Collapse</span>}
-            {isCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-        </Button>
+             <Settings className="h-5 w-5 shrink-0" />
+             {!isCollapsed && <span>Settings</span>}
+        </NavLink>
       </div>
     </aside>
   );

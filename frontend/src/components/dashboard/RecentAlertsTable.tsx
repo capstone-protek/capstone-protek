@@ -1,13 +1,29 @@
 import type { AlertData } from "@/types";
 import { AlertTriangle, AlertOctagon, Info, CheckCircle2 } from "lucide-react";
 
+// Update Interface: Terima kemungkinan data berupa Array ATAU Object Wrapper
 interface RecentAlertsTableProps {
-  data?: AlertData[];
+  data?: AlertData[] | { alerts: AlertData[] } | null;
 }
 
-export const RecentAlertsTable = ({ data = [] }: RecentAlertsTableProps) => {
+export const RecentAlertsTable = ({ data }: RecentAlertsTableProps) => {
   
-  // 1. Helper function untuk menentukan warna & icon berdasarkan severity
+  // --- 1. NORMALISASI DATA (Type-Safe) ---
+  // Kita tentukan alertsList sebagai Array kosong dulu
+  let alertsList: AlertData[] = [];
+
+  if (data) {
+    if (Array.isArray(data)) {
+      // Jika data langsung Array, pakai
+      alertsList = data;
+    } else if ('alerts' in data && Array.isArray(data.alerts)) {
+      // Jika data berbentuk Object { alerts: [...] }, ambil properti alerts
+      // 'in' operator aman digunakan tanpa 'any'
+      alertsList = data.alerts;
+    }
+  }
+
+  // --- 2. Helper Severity ---
   const getSeverityBadge = (severity: string) => {
     switch (severity) {
       case "CRITICAL":
@@ -36,7 +52,6 @@ export const RecentAlertsTable = ({ data = [] }: RecentAlertsTableProps) => {
     }
   };
 
-  // 2. Format Tanggal agar enak dibaca (Contoh: 10 Des, 14:30)
   const formatDate = (dateString: string | Date) => {
     return new Date(dateString).toLocaleString("id-ID", {
       day: "numeric",
@@ -48,7 +63,6 @@ export const RecentAlertsTable = ({ data = [] }: RecentAlertsTableProps) => {
 
   return (
     <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
-      {/* Header Card */}
       <div className="p-6 flex flex-row items-center justify-between pb-4">
         <div>
           <h3 className="font-bold text-lg">Recent Alerts</h3>
@@ -56,16 +70,13 @@ export const RecentAlertsTable = ({ data = [] }: RecentAlertsTableProps) => {
             Riwayat peringatan sistem terbaru.
           </p>
         </div>
-        {/* Badge jumlah alert */}
         <span className="bg-muted text-muted-foreground text-xs font-medium px-2.5 py-0.5 rounded-full">
-          {data.length} Total
+          {alertsList.length} Total
         </span>
       </div>
 
-      {/* Konten Tabel */}
       <div className="p-0 overflow-x-auto">
-        {data.length === 0 ? (
-          // --- TAMPILAN JIKA DATA KOSONG ---
+        {alertsList.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 text-center">
             <CheckCircle2 className="h-10 w-10 text-green-500 mb-2" />
             <p className="text-lg font-medium">All Systems Operational</p>
@@ -74,7 +85,6 @@ export const RecentAlertsTable = ({ data = [] }: RecentAlertsTableProps) => {
             </p>
           </div>
         ) : (
-          // --- TAMPILAN TABEL ---
           <table className="w-full text-sm text-left">
             <thead className="bg-muted/50 text-muted-foreground uppercase text-xs">
               <tr>
@@ -85,8 +95,7 @@ export const RecentAlertsTable = ({ data = [] }: RecentAlertsTableProps) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {/* Mapping Data alert ke baris tabel */}
-              {data.map((alert) => (
+              {alertsList.map((alert) => (
                 <tr 
                   key={alert.id} 
                   className="bg-card hover:bg-muted/50 transition-colors"
@@ -96,9 +105,10 @@ export const RecentAlertsTable = ({ data = [] }: RecentAlertsTableProps) => {
                   </td>
                   <td className="px-6 py-4 font-medium text-foreground">
                     <div>
-                      {alert.machine.name}
+                      {/* Optional Chaining untuk keamanan extra */}
+                      {alert.machine?.name || "Unknown"}
                       <div className="text-xs text-muted-foreground mt-0.5">
-                        {alert.machine.asetId}
+                        {alert.machine?.asetId || "-"}
                       </div>
                     </div>
                   </td>

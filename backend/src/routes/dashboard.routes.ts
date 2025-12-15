@@ -5,6 +5,6 @@ const router = Router();
 
 // GET /api/dashboard/summary
 // Endpoint ini akan dipanggil saat Ulil (FE) pertama kali buka halaman Home
-router.get('/summary', getDashboardSummary);
+router.get('/stats', getDashboardSummary);
 
 export default router;

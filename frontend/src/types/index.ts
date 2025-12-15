@@ -87,25 +87,7 @@ export interface MachineDetailResponse {
   updatedAt: string;
 }
 
-export interface SensorHistoryData {
-  id: number;
-  type: string;
-  value: number;
-  timestamp: string;
-  machineId: number;
-}
-
-export interface SensorDataPoint {
-  id: number;
-  machine_id: number;
-  type: string;
-  air_temperature_K: number;
-  process_temperature_K: number;
-  rotational_speed_rpm: number;
-  torque_Nm: number;
-  tool_wear_min: number;
-  insertion_time: string;
-}
+// Sensor history types removed (not used)
 
 // ==========================================================
 // 5. API RESPONSE WRAPPERS

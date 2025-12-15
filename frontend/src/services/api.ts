@@ -1,138 +1,95 @@
-// frontend/src/services/api.ts
 import axios from "axios";
-import type { 
-  DashboardSummaryResponse, 
-  MachineDetailResponse, 
-  SensorHistoryData,
-  AlertData,
-  PredictPayload,
-  PredictResponseFE
-} from "../types";
 
-// Gunakan URL Railway Anda jika di production, atau localhost saat dev
-const API_URL = import.meta.env.VITE_API_URL || "https://api-protek-production.up.railway.app/api";
+// --- INTERFACES (Definisi Tipe Data) ---
+
+// 1. Definisikan bentuk Alert agar tidak perlu pakai 'any'
+export interface Alert {
+  id: number;
+  message: string;
+  severity: "CRITICAL" | "WARNING" | "INFO" | string;
+  timestamp: string;
+  machine?: {
+    name: string;
+    asetId?: string;
+  };
+}
+
+export interface DashboardSummaryResponse {
+  summary: {
+    totalMachines: number;
+    todaysAlerts: number;
+    criticalMachines: number;
+    systemHealth: number;
+  };
+  // ✅ FIX: Ganti 'any[]' dengan 'Alert[]'
+  recentAlerts: Alert[]; 
+}
+
+export interface ChatResponse {
+  reply: string;
+}
+
+// --- CONFIG ---
+const API_URL = "https://capstone-protek-production-cabc.up.railway.app/api";
 
 const api = axios.create({
   baseURL: API_URL,
   headers: {
     "Content-Type": "application/json",
   },
+  timeout: 15000,
 });
 
-// --- INTERFACES (Di-export agar bisa dipakai di Komponen) ---
-
-export interface SimulationResponse {
-  status: "success" | "error";
-  message: string;
-  is_running?: boolean;
-}
-
-export interface TrendDataPoint {
-  time: string;
-  healthScore: number;
-  machineId: string;
-}
-
-export interface DebugMatchItem {
-  mesin: string;
-  kode: string;
-  status_saat_ini: string;
-  prediksi_ml: {
-    sisa_umur_rul: string;
-    risiko_kerusakan: string;
-    status_prediksi: string;
-  } | string; 
-}
-
-export interface ChatResponse {
-  reply: string;
-  debug_match?: DebugMatchItem[]; 
-}
-
 // --- SERVICES ---
-
-export const simulationService = {
-  // 1. Start Simulasi
-  start: async () => {
-    const response = await api.post<SimulationResponse>("/simulation/start");
-    return response.data;
+export const dashboardService = {
+  // Get Dashboard Summary
+  getSummary: async () => {
+    try {
+      const response = await api.get<DashboardSummaryResponse>("/dashboard/summary");
+      return response.data;
+    } catch (error) {
+      console.error("API Error [Summary]:", error);
+      throw error;
+    }
   },
 
-  // 2. Stop Simulasi
-  stop: async () => {
-    // Menggunakan GET sesuai controller backend Anda saat ini
-    const response = await api.get<SimulationResponse>("/simulation/stop");
-    return response.data;
+  // Get Machine History (Chart)
+  // Gunakan unknown[] atau interface spesifik jika ada, hindari any[]
+  getHistory: async (asetId: string) => {
+    try {
+      const response = await api.get(`/machines/${asetId}/history`);
+      return response.data;
+    } catch (error) {
+      console.error("API Error [History]:", error);
+      return []; 
+    }
   },
 
-  // 3. Cek Status (Untuk tombol Start/Stop)
-  getStatus: async () => {
-    const response = await api.get<{ is_running: boolean }>("/simulation/status");
-    return response.data;
+  // Chatbot
+  sendMessage: async (message: string) => {
+    try {
+      const response = await api.post<ChatResponse>("/chat", { message });
+      return response.data;
+    } catch (error) {
+      console.error("API Error [Chat]:", error);
+      throw error;
+    }
   }
 };
 
-export const dashboardService = {
-  getSummary: async () => {
-    const response = await api.get<DashboardSummaryResponse>("/dashboard/summary");
-    return response.data;
+export const simulationService = {
+  // Simulation Status
+  getStatus: async () => {
+    try {
+      const response = await api.get("/simulation/status");
+      return response.data;
+    } catch {
+      return { is_running: false };
+    }
   },
-
-  getTrend: async () => {
-    const response = await api.get<TrendDataPoint[]>("/dashboard/trend");
-    return response.data;
-  },
-
-  getMachines: async () => {
-    const response = await api.get<MachineDetailResponse[]>("/machines");
-    return response.data;
-  },
-
-  getMachineDetail: async (asetId: string) => {
-    const response = await api.get<MachineDetailResponse>(`/machines/${asetId}`);
-    return response.data;
-  },
-
-  // --- FIX PENTING: Menambahkan getSensors ---
-  // Ini diperlukan oleh MachineHealthChart.tsx
-  getSensors: async (asetId: string) => {
-    // Mengambil data history sensor untuk grafik realtime
-    const response = await api.get<SensorHistoryData[]>(`/machines/${asetId}/history`);
-    return response.data;
-  },
-
-  // Method baru untuk mengambil data dari tabel sensor_data
-  getSensorData: async (asetId: string) => {
-    const response = await api.get(`/sensor-data/machine/${asetId}`);
-    return response.data;
-  },
-
-  getHistory: async (asetId: string) => {
-    const response = await api.get<SensorHistoryData[]>(`/machines/${asetId}/history`);
-    return response.data;
-  },
-
-  getAlerts: async () => {
-    const response = await api.get<{ alerts: AlertData[] } | AlertData[]>(`/alerts`);
-    const data = response.data;
-    // Handle format { alerts: [...] } atau array langsung [...]
-    return Array.isArray(data) ? data : data.alerts;
-  },
-
-  getAlertDetail: async (alertId: number) => {
-    const response = await api.get<AlertData>(`/alerts/${alertId}`);
-    return response.data;
-  },
-
-  getPredict: async (payload: PredictPayload) => {
-    const response = await api.post<PredictResponseFE>(`/predict`, payload);
-    return response.data;
-  },
-
-  sendMessage: async (message: string) => {
-    const response = await api.post<ChatResponse>('/chat', { message });
-    return response.data;
-  }
+  
+  start: async () => api.post("/simulation/start"),
+  stop: async () => api.get("/simulation/stop"),
 };
 
 export default api;

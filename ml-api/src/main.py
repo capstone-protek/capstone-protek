@@ -39,6 +39,15 @@ app = FastAPI(title="PROTEK AI SERVICE (MLOPS SIMULATOR)", version="2.0 (Full ML
 # Buat instance model
 ai_engine = MaintenanceModel()
 
+# --- Machine ID Mapping ---
+# Map string machine IDs (M-14850) to database integer IDs
+MACHINE_ID_MAP = {
+    "M-14850": 5,
+    "M-33011": 6,
+    "M-18096": 7,
+    "M-20232": 8,
+}
+
 # --- Fungsi MLOps: Feature Engineering ---
 # Fungsi ini menyiapkan fitur dari baris CSV tanpa sensor history (snake_case)
 async def perform_feature_engineering(row: Dict[str, Any]):
@@ -66,10 +75,14 @@ async def insert_sensor_row(row: Dict[str, Any]):
         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING insertion_time;
     """
 
+    # Map string machine ID to integer
+    machine_id_str = row["machine_id"]
+    machine_id_int = MACHINE_ID_MAP.get(machine_id_str, 1)
+
     inserted_records = await execute_query(
         sql_insert,
-        str(row["machine_id"]),  # Ensure string (e.g., "M-14850")
-        row["Type"],
+        machine_id_int,  # Integer machine ID
+        row["Type"],  # Machine type (L, M, H)
         row["Air temperature [K]"],
         row["Process temperature [K]"],
         row["Rotational speed [rpm]"],
@@ -131,7 +144,7 @@ async def run_simulation_loop():
     while SIMULATION_INDEX < len(DATA_SIMULASI):
         row = DATA_SIMULASI[SIMULATION_INDEX]
         minutes = TIME_MAPPING_MINUTES.get(row['Type'], 2)
-        sleep_time = minutes * 60
+        sleep_time = minutes * 10
         
         try:
             # 1) Injeksi data mentah ke DB
@@ -171,10 +184,12 @@ async def run_simulation_loop():
                 )
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);
             """
+            # Map string machine ID to integer
+            machine_id_int = MACHINE_ID_MAP.get(str(machine_id), 1)
             await execute_query(
                 sql_predict,
-                str(machine_id),
-                risk_str,
+                machine_id_int,
+                risk_val,  # Float value, not string
                 rul_estimate,
                 rul_status,
                 rul_minutes,
@@ -298,6 +313,23 @@ async def stop_simulation():
         SIMULATION_TASK = None
         return {"status": "success", "message": "Simulasi berhasil dihentikan."}
     return {"status": "error", "message": "Tidak ada simulasi yang berjalan."}
+
+@app.get("/api/simulation/status")
+async def get_simulation_status():
+    """Mendapatkan status simulasi yang sedang berjalan."""
+    total_rows = len(DATA_SIMULASI)
+    progress = 0
+    if total_rows > 0 and SIMULATION_INDEX > 0:
+        progress = (SIMULATION_INDEX / total_rows) * 100
+
+    return {
+        "is_running": IS_RUNNING,
+        "processed_rows": SIMULATION_INDEX,
+        "total_rows": total_rows,
+        "progress_percent": f"{progress:.2f}%",
+        "message": "Simulasi sedang berjalan." if IS_RUNNING else "Tidak ada simulasi yang aktif."
+    }
+
 
 # --- 5. Endpoint Prediksi Asli (untuk pengujian/penggunaan langsung) ---
 @app.post("/predict")

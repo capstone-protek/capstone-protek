@@ -5,7 +5,7 @@ import { StatsCard } from "@/components/dashboard/StatsCard";
 import { MachineHealthChart } from "@/components/dashboard/MachineHealthChart";
 import { RecentAlertsTable } from "@/components/dashboard/RecentAlertsTable";
 import { dashboardService } from "@/services/api";
-import { SimulationControl } from "@/components/dashboard/SimulationControl";
+import SimulationControl from "@/components/dashboard/SimulationControl";
 import { ChatWidget } from "@/components/chat/ChatWidget";
 import type { DashboardSummaryResponse } from "@/types";
 

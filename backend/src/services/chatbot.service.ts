@@ -6,12 +6,12 @@ import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 const prisma = new PrismaClient();
 
 // Konfigurasi BiznetGIO / OpenAI
-const biznetBaseURL = process.env.BIZNETGIO_ENDPOINT?.replace('/chat/completions', '') || 'https://api.biznetgio.ai/v1';
+const biznetBaseURL = 'https://api.biznetgio.ai/v1';
 
 const chatModel = new ChatOpenAI({
   openAIApiKey: process.env.OPENAI_API_KEY,
   modelName: process.env.BIZNETGIO_MODEL_NAME || "openai/gpt-oss-120b",
-  temperature: 0.1, // Turunkan temperature agar jawaban lebih konsisten/fakta
+  temperature: 0.1,
   configuration: {
     baseURL: biznetBaseURL,
     defaultHeaders: {

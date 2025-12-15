@@ -1,8 +1,9 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import type { ReactNode } from 'react'; // Fix: Type-only import
+/* eslint-disable react-refresh/only-export-components */
+import  { createContext, useContext, useState, useEffect } from 'react';
+import  type { ReactNode } from 'react';
 import { dashboardService } from "@/services/api";
 
-// Definisi Tipe Data
+// Tipe Data Message
 export interface Message {
   id: string;
   role: 'user' | 'assistant';
@@ -24,12 +25,14 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<Message[]>(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        try { return JSON.parse(saved); } catch { return []; }
+      }
     }
     return [{
       id: 'init',
       role: 'assistant',
-      text: "Halo! Saya Protek Copilot. Ada yang bisa saya bantu mengenai kondisi mesin hari ini? 🤖",
+      text: "Halo! Saya Protek Copilot. Ada yang bisa saya bantu? 🤖",
       timestamp: new Date().toISOString()
     }];
   });
@@ -43,32 +46,46 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const sendMessage = async (input: string) => {
     if (!input.trim() || isLoading) return;
 
+    // 1. Tambah pesan User ke UI
     const userMsg: Message = {
       id: Date.now().toString(),
       role: 'user',
       text: input,
       timestamp: new Date().toISOString()
     };
-
     setMessages(prev => [...prev, userMsg]);
     setIsLoading(true);
 
     try {
+      // 2. Panggil API Backend
       const data = await dashboardService.sendMessage(input);
       
       const botMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        text: data.reply,
+        text: data.reply || "Maaf, saya tidak mengerti respon server.",
         timestamp: new Date().toISOString()
       };
       setMessages(prev => [...prev, botMsg]);
+
     } catch (error) {
-      console.error("Chat Error:", error); // Fix: Error variable used
+      console.error("Chat Error:", error);
+      
+      // 3. Tangani Error (Termasuk 500)
+      let errorMessage = "Maaf, terjadi kesalahan koneksi.";
+      
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 500) {
+            errorMessage = "⚠️ Server Backend sedang gangguan (Error 500). Coba lagi nanti.";
+        } else if (error.code === "ERR_NETWORK") {
+            errorMessage = "⚠️ Tidak bisa menghubungi server. Cek koneksi internet.";
+        }
+      }
+
       const errorMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        text: "Maaf, koneksi ke server terputus.",
+        text: errorMessage,
         timestamp: new Date().toISOString()
       };
       setMessages(prev => [...prev, errorMsg]);
@@ -78,15 +95,13 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   };
 
   const clearHistory = () => {
-    if (confirm("Hapus semua riwayat chat?")) {
-        const resetMsg: Message[] = [{
-            id: Date.now().toString(),
-            role: 'assistant',
-            text: "Riwayat percakapan telah dibersihkan. 🧹",
-            timestamp: new Date().toISOString()
-        }];
-        setMessages(resetMsg);
-    }
+      const resetMsg: Message[] = [{
+          id: Date.now().toString(),
+          role: 'assistant',
+          text: "Riwayat percakapan telah dibersihkan. 🧹",
+          timestamp: new Date().toISOString()
+      }];
+      setMessages(resetMsg);
   };
 
   return (
@@ -96,8 +111,9 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// Export hook terpisah biasanya membantu fast refresh, 
-// tapi jika masih error, abaikan saja (warning dev mode) selama app jalan.
+// Tambahkan import axios untuk pengecekan error di atas
+import axios from 'axios'; 
+
 export function useChat() {
   const context = useContext(ChatContext);
   if (context === undefined) {
