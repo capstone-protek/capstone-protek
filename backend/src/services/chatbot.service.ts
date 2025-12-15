@@ -56,7 +56,7 @@ class ChatbotService {
       // ✅ PERBAIKAN 2: Typo variabel di .find()
       // Sebelumnya: .find(m => p.machine_id ...) <- 'p' tidak dikenal
       // Sekarang:   .find(p => p.machine_id ...) <- 'p' didefinisikan sebagai parameter
-      const prediction = rawPredictions.find(p => p.machine_id === m.aset_id);
+      const prediction = rawPredictions.find(p => p.machine_id === m.id);
 
       let mlData = "Belum ada data ML";
       

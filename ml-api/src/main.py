@@ -69,6 +69,7 @@ async def insert_sensor_row(row: Dict[str, Any]):
     inserted_records = await execute_query(
         sql_insert,
         str(row["machine_id"]),  # Ensure string (e.g., "M-14850")
+        row["UID"],  # Use integer UID for the database 'machine_id' column
         row["Type"],
         row["Air temperature [K]"],
         row["Process temperature [K]"],
@@ -174,6 +175,7 @@ async def run_simulation_loop():
             await execute_query(
                 sql_predict,
                 str(machine_id),
+                row["UID"],  # Use integer UID for the database 'machine_id' column
                 risk_str,
                 rul_estimate,
                 rul_status,
@@ -298,6 +300,23 @@ async def stop_simulation():
         SIMULATION_TASK = None
         return {"status": "success", "message": "Simulasi berhasil dihentikan."}
     return {"status": "error", "message": "Tidak ada simulasi yang berjalan."}
+
+@app.get("/api/simulation/status")
+async def get_simulation_status():
+    """Mendapatkan status simulasi yang sedang berjalan."""
+    total_rows = len(DATA_SIMULASI)
+    progress = 0
+    if total_rows > 0 and SIMULATION_INDEX > 0:
+        progress = (SIMULATION_INDEX / total_rows) * 100
+
+    return {
+        "is_running": IS_RUNNING,
+        "processed_rows": SIMULATION_INDEX,
+        "total_rows": total_rows,
+        "progress_percent": f"{progress:.2f}%",
+        "message": "Simulasi sedang berjalan." if IS_RUNNING else "Tidak ada simulasi yang aktif."
+    }
+
 
 # --- 5. Endpoint Prediksi Asli (untuk pengujian/penggunaan langsung) ---
 @app.post("/predict")

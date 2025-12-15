@@ -83,7 +83,10 @@ export const getMachineHistory = async (req: Request, res: Response) => {
     }
 
     const rows = await prisma.sensor_data.findMany({
-      where: { machine_id: machineAsetId },
+      where: { 
+        // Bungkus variabel dengan Number() agar sesuai tipe data database
+        machine_id: Number(machineAsetId) 
+      },
       take: 100,
       orderBy: { insertion_time: 'desc' }
     });
