@@ -101,9 +101,9 @@ export const dashboardService = {
     return response.data;
   },
 
-  // Method baru untuk mengambil data dari tabel sensor_data
+  // Method baru untuk mengambil data dari tabel sensor_data (realtime)
   getSensorData: async (asetId: string) => {
-    const response = await api.get(`/sensor-data/machine/${asetId}`);
+    const response = await api.get<SensorHistoryData[]>(`/machines/${asetId}/history`);
     return response.data;
   },
 

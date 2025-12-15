@@ -1,6 +1,6 @@
 // src/lib/api.ts
 
-const API_BASE = 'http://localhost:4000/api';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 // Helper sederhana untuk fetch
 async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T | null> {

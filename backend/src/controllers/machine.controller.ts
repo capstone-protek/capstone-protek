@@ -16,7 +16,19 @@ export const getMachines = async (req: Request, res: Response) => {
         }
       }
     });
-    res.json(machinesList);
+    
+    // Map to camelCase for frontend
+    const formatted = machinesList.map(m => ({
+      id: m.id,
+      asetId: m.aset_id,
+      name: m.name,
+      status: m.status,
+      createdAt: m.created_at,
+      updatedAt: m.updated_at,
+      alerts: m.alerts
+    }));
+    
+    res.json(formatted);
   } catch (error) {
     console.error("Error fetching machines:", error);
     res.status(500).json({ error: "Failed to fetch machines" });
@@ -67,40 +79,40 @@ export const getMachineHistory = async (req: Request, res: Response) => {
   }
 
   try {
-    let machineAsetId: string;
+    let machineIntId: number;
 
     if (!isNaN(Number(id))) {
-      // If numeric ID, lookup aset_id
+      // If numeric ID, use directly
+      machineIntId = Number(id);
+    } else {
+      // If string (e.g., M-14850), lookup integer ID from aset_id
       const machine = await prisma.machines.findUnique({
-        where: { id: Number(id) },
-        select: { aset_id: true }
+        where: { aset_id: String(id) },
+        select: { id: true }
       });
       if (!machine) return res.status(404).json({ error: "Machine for history not found" });
-      machineAsetId = machine.aset_id;
-    } else {
-      // If string (e.g., M-14850), use directly
-      machineAsetId = String(id);
+      machineIntId = machine.id;
     }
 
     const rows = await prisma.sensor_data.findMany({
       where: { 
-        // Bungkus variabel dengan Number() agar sesuai tipe data database
-        machine_id: Number(machineAsetId) 
+        machine_id: machineIntId 
       },
       take: 100,
       orderBy: { insertion_time: 'desc' }
     });
 
-    // Map ke format FE SensorHistoryData lama jika diperlukan
+    // Map ke format FE SensorDataPoint
     const history = rows.map((r: typeof rows[0]) => ({
-      machineId: r.machine_id,
-      timestamp: r.insertion_time as unknown as string,
-      air_temperature_k: r.air_temperature_k,
-      process_temperature_k: r.process_temperature_k,
-      rotational_speed_rpm: r.rotational_speed_rpm,
-      torque_nm: r.torque_nm,
-      tool_wear_min: r.tool_wear_min,
+      id: r.id,
+      machine_id: r.machine_id,
       type: r.type,
+      air_temperature_K: r.air_temperature_k,
+      process_temperature_K: r.process_temperature_k,
+      rotational_speed_rpm: r.rotational_speed_rpm,
+      torque_Nm: r.torque_nm,
+      tool_wear_min: r.tool_wear_min,
+      insertion_time: r.insertion_time.toISOString(),
     })).reverse();
 
     res.json(history);
