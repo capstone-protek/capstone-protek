@@ -83,8 +83,8 @@ export function MachineStatusGrid() {
 
             return (
               <Link
-                key={machine.asetId}
-                to={`/machine/${machine.asetId}`}
+                key={machine.machine_id}
+                to={`/machine/${machine.machine_id}`}
                 className="block"
               >
                 <Card className="hover:shadow-xl hover:scale-[1.02] transition-all duration-300 cursor-pointer border-l-4 border-2 group"
