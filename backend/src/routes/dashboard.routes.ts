@@ -1,10 +1,15 @@
 import { Router } from 'express';
-import { getDashboardSummary } from '../controllers/dashboard.controller';
+// Import kedua fungsi yang baru kita buat di controller
+import { getDashboardStats, getDashboardMachines } from '../controllers/dashboard.controller';
 
 const router = Router();
 
-// GET /api/dashboard/summary
-// Endpoint ini akan dipanggil saat Ulil (FE) pertama kali buka halaman Home
-router.get('/stats', getDashboardSummary);
+// 1. Endpoint untuk Kartu Statistik (Total, Healthy, Critical, dll)
+// URL: /api/dashboard/stats
+router.get('/stats', getDashboardStats);
+
+// 2. Endpoint untuk Tabel Daftar Mesin
+// URL: /api/dashboard/machines
+router.get('/machines', getDashboardMachines);
 
 export default router;

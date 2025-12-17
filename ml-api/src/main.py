@@ -66,11 +66,13 @@ async def insert_sensor_row(row: Dict[str, Any]):
         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING insertion_time;
     """
 
+    # Use machine_id string directly
+    machine_id_str = row["machine_id"]
+
     inserted_records = await execute_query(
         sql_insert,
-        str(row["machine_id"]),  # Ensure string (e.g., "M-14850")
-        row["UID"],  # Use integer UID for the database 'machine_id' column
-        row["Type"],
+        machine_id_str,  # String machine ID
+        row["Type"],  # Machine type (L, M, H)
         row["Air temperature [K]"],
         row["Process temperature [K]"],
         row["Rotational speed [rpm]"],
@@ -132,7 +134,7 @@ async def run_simulation_loop():
     while SIMULATION_INDEX < len(DATA_SIMULASI):
         row = DATA_SIMULASI[SIMULATION_INDEX]
         minutes = TIME_MAPPING_MINUTES.get(row['Type'], 2)
-        sleep_time = minutes * 60
+        sleep_time = minutes * 10
         
         try:
             # 1) Injeksi data mentah ke DB
@@ -172,11 +174,11 @@ async def run_simulation_loop():
                 )
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);
             """
+            # Use machine_id string directly
             await execute_query(
                 sql_predict,
-                str(machine_id),
-                row["UID"],  # Use integer UID for the database 'machine_id' column
-                risk_str,
+                str(machine_id),  # String machine ID
+                risk_val,  # Float value, not string
                 rul_estimate,
                 rul_status,
                 rul_minutes,
@@ -187,7 +189,35 @@ async def run_simulation_loop():
                 insertion_time,
             )
 
-            # 5) Logging ringkas
+            # --- [BARU] 5) Buat Alert Otomatis Jika Critical ---
+            # Logika: Jika urgency High atau Status Critical, masukkan ke tabel alerts
+            # Ini setara dengan: if (newStatus === MachineStatus.CRITICAL)
+            
+            is_critical = (urgency_text.upper() == "HIGH") or (status_text.upper() == "CRITICAL")
+            
+            if is_critical:
+                alert_message = f"Deteksi Bahaya: {failure_type}. Tindakan: {action_text}"
+                
+                # Query Insert Alert
+                sql_alert = """
+                    INSERT INTO alerts (machine_id, message, severity, created_at)
+                    VALUES ($1, $2, $3, $4);
+                """
+                
+                # Eksekusi Query
+                await execute_query(
+                    sql_alert,
+                    str(machine_id),
+                    alert_message,
+                    "HIGH",          # Severity fixed to HIGH for critical
+                    insertion_time   # Gunakan waktu yang sama dengan data sensor
+                )
+                
+                # Optional Log untuk debug
+                print(f"   >>> [ALERT TRIGGERED] Machine: {machine_id} | Msg: {alert_message}")
+
+
+            # 6) Logging ringkas
             log_prediction(machine_id, risk_str, rul_estimate, rul_status, rul_minutes)
 
         except asyncio.CancelledError:

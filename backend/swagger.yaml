@@ -1,37 +1,18 @@
 openapi: 3.0.0
 info:
-  title: Predictive Maintenance Copilot API
-  description: API Documentation for Capstone Project A25-CS050
-  version: 1.0.0
-  contact:
-    name: Backend Team (Faris)
-
-# URL SERVER (Update sesuai kebutuhan)
+  title: Protek AI API
+  version: 2.0.0
+  description: API Documentation for Protek Predictive Maintenance System
 servers:
-  - url: https://api-protek-production.up.railway.app
-    description: 🚀 Production Server (Railway)
   - url: http://localhost:4000
-    description: 💻 Local Development
-
-tags:
-  - name: Dashboard
-    description: Ringkasan status sistem
-  - name: Prediction
-    description: Integrasi Machine Learning (Core Feature)
-  - name: Simulation
-    description: Kontrol simulasi data realtime
-  - name: Machines
-    description: Manajemen data mesin & sensor history
-  - name: Alerts
-    description: Notifikasi kerusakan
+    description: Local Server
 
 paths:
   # --- DASHBOARD ---
-  /api/dashboard/summary:
+  /api/dashboard/stats:
     get:
-      summary: Get Dashboard Summary
+      summary: Get Dashboard Statistics (Cards)
       tags: [Dashboard]
-      description: Mengambil total mesin, mesin kritis, alert hari ini, dan health score.
       responses:
         200:
           description: OK
@@ -40,247 +21,136 @@ paths:
               schema:
                 type: object
                 properties:
-                  summary:
-                    type: object
-                    properties:
-                      totalMachines:
-                        type: integer
-                        example: 4
-                      criticalMachines:
-                        type: integer
-                        example: 1
-                      systemHealth:
-                        type: integer
-                        example: 85
-                  recentAlerts:
-                    type: array
-                    items:
-                      type: object
+                  total: { type: integer }
+                  healthy: { type: integer }
+                  warning: { type: integer }
+                  critical: { type: integer }
+                  offline: { type: integer }
 
-  # --- SIMULATION ---
-  /api/simulation/start:
-    post:
-      summary: Start Simulation
-      tags: [Simulation]
-      description: Memulai simulasi data realtime dari 40,000 baris data sintetis ke database
-      responses:
-        200:
-          description: Simulasi berhasil dimulai
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: "success"
-                  message:
-                    type: string
-                    example: "Simulasi data realtime dimulai!"
-        400:
-          description: Simulasi sudah berjalan
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: "error"
-                  message:
-                    type: string
-                    example: "Simulasi sudah berjalan."
-
-  /api/simulation/stop:
+  /api/dashboard/machines:
     get:
-      summary: Stop Simulation
-      tags: [Simulation]
-      description: Menghentikan simulasi yang sedang berjalan
+      summary: Get Machine List for Dashboard Table
+      tags: [Dashboard]
       responses:
         200:
-          description: Simulasi berhasil dihentikan
+          description: OK
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: "success"
-                  message:
-                    type: string
-                    example: "Simulasi berhasil dihentikan."
-        400:
-          description: Tidak ada simulasi yang berjalan
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: "error"
-                  message:
-                    type: string
-                    example: "Tidak ada simulasi yang berjalan."
+                type: array
+                items:
+                  $ref: '#/components/schemas/MachineOverview'
 
-  /api/simulation/status:
+  # --- MACHINES ---
+  /api/machines/{id}:
     get:
-      summary: Get Simulation Status
-      tags: [Simulation]
-      description: Mendapatkan status simulasi saat ini
+      summary: Get Machine Detail (Sensor + Prediction)
+      tags: [Machines]
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+          description: Machine ID (e.g., M-14850) or ID (1)
       responses:
         200:
-          description: Status simulasi
+          description: Success
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  is_running:
-                    type: boolean
-                    example: true
-                  current_index:
-                    type: integer
-                    example: 1250
-                  total_records:
-                    type: integer
-                    example: 40000
-                  progress_percentage:
-                    type: number
-                    example: 3.125
+                $ref: '#/components/schemas/MachineDetail'
 
-  # --- PREDICTION (CORE FEATURE) ---
+  /api/machines/{id}/history:
+    get:
+      summary: Get Sensor History Chart Data
+      tags: [Machines]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        200:
+          description: OK
+
+  # --- PREDICT ---
   /api/predict:
     post:
-      summary: Trigger Prediction (Simulasi Sensor)
+      summary: Receive Prediction Result from Python/ML
       tags: [Prediction]
-      description: >
-        Mengirim data sensor ke ML API. 
-        Jika ML mendeteksi kerusakan (CRITICAL), Backend akan otomatis membuat Alert baru di Database.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required:
-                - Machine_ID
-                - Air_Temp
-                - Process_Temp
-                - RPM
-                - Torque
-                - Tool_Wear
               properties:
-                Machine_ID:
-                  type: string
-                  description: ID Mesin sesuai Database (Case Sensitive)
-                  example: "M-14850"
-                Type:
-                  type: string
-                  description: Tipe kualitas produk (L/M/H)
-                  example: "L"
-                Air_Temp:
-                  type: number
-                  description: Suhu Udara [K]
-                  example: 305.5
-                Process_Temp:
-                  type: number
-                  description: Suhu Proses [K]
-                  example: 310.4
-                RPM:
-                  type: integer
-                  description: Kecepatan Putar [rpm]
-                  example: 1600
-                Torque:
-                  type: number
-                  description: Torsi [Nm]
-                  example: 65.5
-                Tool_Wear:
-                  type: integer
-                  description: Keausan Alat [min]
-                  example: 220
+                machine_id: { type: string, example: "M-14850" }
+                risk_probability: { type: number, format: float, example: 0.85 }
+                rul_estimate: { type: string, example: "2 Jam" }
+                rul_minutes_val: { type: number, example: 120.5 }
+                pred_status: { type: string, example: "CRITICAL" }
+                failure_type: { type: string, example: "Overheating" }
+                action: { type: string, example: "Check Coolant" }
+                urgency: { type: string, example: "High" }
       responses:
-        200:
-          description: Prediction Success
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: "success"
-                  input_saved:
-                    type: boolean
-                    example: true
-                  alert_created:
-                    type: boolean
-                    description: True jika hasil prediksi adalah CRITICAL
-                    example: true
-                  ml_result:
-                    type: object
-                    properties:
-                      Status:
-                        type: string
-                        example: "⚠️ CRITICAL FAILURE DETECTED"
-                      Failure_Type:
-                        type: string
-                        example: "Power Failure"
-                      RUL_Status:
-                        type: string
-                        example: "🚨 CRITICAL"
+        201:
+          description: Created
 
-  # --- MACHINES ---
-  /api/machines:
+  /api/predict/latest/{machineId}:
     get:
-      summary: List All Machines
-      tags: [Machines]
-      responses:
-        200:
-          description: Array of machines
-
-  /api/machines/{id}:
-    get:
-      summary: Get Machine Detail
-      tags: [Machines]
+      summary: Get Latest Prediction by Machine ID
+      tags: [Prediction]
       parameters:
         - in: path
-          name: id
-          schema:
-            type: string
+          name: machineId
           required: true
-          description: Bisa ID Angka (1) atau Aset ID (M-14850)
-          example: "M-14850"
+          schema: { type: string }
       responses:
         200:
-          description: Machine Detail Object
-        404:
-          description: Machine not found
-
-  /api/machines/{id}/history:
-    get:
-      summary: Get Sensor History (Grafik)
-      tags: [Machines]
-      description: Mengambil data sensor historis untuk grafik frontend.
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: string
-          description: Aset ID (e.g., M-14850)
-          example: "M-14850"
-      responses:
-        200:
-          description: Array of sensor readings (Time Series)
+          description: OK
 
   # --- ALERTS ---
   /api/alerts:
     get:
-      summary: List All Alerts
+      summary: Get All Active Alerts
       tags: [Alerts]
-      description: Mengambil riwayat alert/kerusakan yang tersimpan di DB.
       responses:
         200:
-          description: Array of alerts
+          description: OK
+
+  # --- CHATBOT ---
+  /api/chat:
+    post:
+      summary: Chat with AI Copilot
+      tags: [Chatbot]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message: { type: string, example: "Kondisi mesin M-14850 gimana?" }
+      responses:
+        200:
+          description: AI Response
+
+components:
+  schemas:
+    MachineOverview:
+      type: object
+      properties:
+        id: { type: integer }
+        machine_id: { type: string }
+        name: { type: string }
+        status: { type: string }
+    MachineDetail:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/MachineOverview'
+        - type: object
+          properties:
+            sensor_data: { type: array }
+            prediction_results: { type: array }
+            alerts: { type: array }

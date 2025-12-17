@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,7 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Enum Status Mesin (Sesuai mockData)
 enum MachineStatus {
   CRITICAL
   WARNING
@@ -16,64 +14,65 @@ enum MachineStatus {
   OFFLINE
 }
 
-// Model 1: machines (match table name)
+// Model 1: machines
 model machines {
-  id            Int             @id @default(autoincrement())
-  aset_id       String          @unique // Contoh: "M-14850"
-  name          String          // Contoh: "CNC Grinder 01"
-  status        MachineStatus   @default(OFFLINE)
-  created_at    DateTime        @default(now())
-  updated_at    DateTime        @updatedAt
-
+  id             Int                @id @default(autoincrement()) // Primary Key Internal (1, 2, 3...)
+  machine_id     String             @unique // EX-ASET_ID (cth: "M-14850"). Wajib @unique!
+  name           String
+  status         MachineStatus      @default(OFFLINE)
+  created_at     DateTime           @default(now())
+  updated_at     DateTime           @updatedAt
+  
   // Relasi
-  alerts        alerts[]
-  sensor_data   sensor_data[]
+  alerts             alerts[]
+  sensor_data        sensor_data[]
+  prediction_results prediction_results[]
 }
-// Model 2: alerts (match table name)
+
+// Model 2: alerts
 model alerts {
-  id          Int      @id @default(autoincrement())
-  message     String
-  severity    String   // "HIGH", "MEDIUM", "LOW"
-  timestamp   DateTime @default(now())
-
-  // Relasi ke machines
-  machine_id  Int
-  machine     machines @relation(fields: [machine_id], references: [id])
+  id         Int      @id @default(autoincrement())
+  message    String
+  severity   String
+  timestamp  DateTime @default(now())
+  
+  // Relasi merujuk ke machine_id (String)
+  machine_id String   
+  machine    machines @relation(fields: [machine_id], references: [machine_id])
 }
 
-// Sensor history dihapus (tidak digunakan)
-
-// Model 3: sensor_data (sesuai dari API ML)
+// Model 3: sensor_data
 model sensor_data {
-  id                    Int       @id @default(autoincrement())
+  id                    Int      @id @default(autoincrement())
+  
+  // Relasi merujuk ke machine_id (String)
+  machine_id            String   
+  machine               machines @relation(fields: [machine_id], references: [machine_id])
 
-  // Relasi ke machines via aset_id (string like "M-14850")
-  machine_id            String
-  machine               machines  @relation(fields: [machine_id], references: [aset_id])
-
-  // Kolom Sensor
-  type                  String    // Type (L, M, H)
-  air_temperature_k     Float     
-  process_temperature_k Float     
-  rotational_speed_rpm  Int       
-  torque_nm             Float     
-  tool_wear_min         Int       
-
-  // Kolom Timestamp
-  insertion_time        DateTime  @default(now())
+  type                  String
+  air_temperature_k     Float
+  process_temperature_k Float
+  rotational_speed_rpm  Int
+  torque_nm             Float
+  tool_wear_min         Int
+  insertion_time        DateTime @default(now())
 }
 
-// Model 4: prediction_results (sesuai dari API ML)
+// Model 4: prediction_results
 model prediction_results {
-  id                Int       @id @default(autoincrement())
-  prediction_time   DateTime  @default(now()) // Waktu prediksi
-  machine_id        String    // Machine_ID (cth: M-14850)
-  risk_probability  String    // Risk_Probability (cth: "78.3%")
-  rul_estimate      String    // RUL_Estimate (cth: "0 Menit Lagi")
-  rul_status        String    // RUL_Status (cth: "🚨 CRITICAL")
-  rul_minutes_val   Float     // RUL_Minutes (Nilai numerik 0, 162, dsb)
-  pred_status       String    // Status (cth: "⚠️ CRITICAL FAILURE DETECTED")
-  failure_type      String    // Failure_Type (cth: "Power Failure")
-  action            String    // Action (cth: "Cek tegangan listrik...")
-  urgency           String    // Urgency (cth: "🚨 SANGAT MENDESAK...")
+  id                Int      @id @default(autoincrement())
+  prediction_time   DateTime @default(now())
+  
+  // Relasi merujuk ke machine_id (String)
+  machine_id        String   
+  machine           machines @relation(fields: [machine_id], references: [machine_id])
+
+  risk_probability  Float
+  rul_estimate      String
+  rul_status        String
+  rul_minutes_val   Float
+  pred_status       String
+  failure_type      String
+  action            String
+  urgency           String
 }
