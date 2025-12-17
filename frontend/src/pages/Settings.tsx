@@ -1,7 +1,6 @@
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Card, CardTitle, CardContent, CardHeader, CardDescription } from "@/components/ui/card";
+import { Card, CardTitle, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { useTheme } from "@/context/theme";
 import { 
   Moon, 
@@ -31,21 +30,10 @@ export default function Settings() {
 
   return (
     <AppLayout>
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-foreground mb-2">
-          Settings
-        </h1>
-        <p className="text-muted-foreground text-lg">
-          Manage your account preferences and appearance
-        </p>
-      </div>
 
       <Card>
         <CardHeader>
           <CardTitle className="text-2xl">Appearance</CardTitle>
-          <CardDescription>
-            Customize how the dashboard looks on your device.
-          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -92,7 +80,6 @@ export default function Settings() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              {/* --- DROPDOWN MENU END --- */}
             </div>
             
             <p className="text-sm text-muted-foreground">
@@ -101,17 +88,6 @@ export default function Settings() {
                 : `Active theme: ${theme.charAt(0).toUpperCase() + theme.slice(1)} mode.`}
             </p>
           </div>
-        </CardContent>
-      </Card>
-
-      <Separator className="my-6" />
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl">System Preferences</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-muted-foreground">Other settings coming soon...</div>
         </CardContent>
       </Card>
     </AppLayout>

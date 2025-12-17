@@ -95,13 +95,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   };
 
   const clearHistory = () => {
-      const resetMsg: Message[] = [{
-          id: Date.now().toString(),
-          role: 'assistant',
-          text: "Riwayat percakapan telah dibersihkan. 🧹",
-          timestamp: new Date().toISOString()
-      }];
-      setMessages(resetMsg);
+      setMessages([]);
   };
 
   return (

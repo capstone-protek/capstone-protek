@@ -42,7 +42,6 @@ class ChatbotService {
     });
 
     // 2. Data Processing (LOGIC DIPINDAH KE SINI)
-    // Kita "mengunyah" data dulu sebelum dikasih ke AI biar AI gak salah hitung
     const machineHealthSummary = machines.map(m => {
       const prediction = rawPredictions.find(p => p.machine_id === m.aset_id);
 
@@ -82,7 +81,7 @@ class ChatbotService {
       return {
         nama_mesin: m.name,
         kode: m.aset_id,
-        status_dashboard: m.status, // Status dari tabel mesin (Healthy/Offline)
+        status_dashboard: m.status, 
         analisa_ml: mlInfo,
         kesimpulan_sistem: kondisiTeknis, // Ini yang akan dibaca AI
         rekomendasi: rekomendasiSistem

@@ -39,8 +39,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       <div 
         className={cn(
           "flex flex-col min-h-screen transition-all duration-300 ease-in-out",
-          // Sesuaikan margin dengan lebar sidebar (70px vs 256px)
-          isCollapsed ? "ml-[70px]" : "ml-64"
+          isCollapsed ? "ml-[100px]" : "ml-72"
         )}
       >
         
