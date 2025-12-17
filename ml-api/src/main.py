@@ -39,15 +39,6 @@ app = FastAPI(title="PROTEK AI SERVICE (MLOPS SIMULATOR)", version="2.0 (Full ML
 # Buat instance model
 ai_engine = MaintenanceModel()
 
-# --- Machine ID Mapping ---
-# Map string machine IDs (M-14850) to database integer IDs
-MACHINE_ID_MAP = {
-    "M-14850": 5,
-    "M-33011": 6,
-    "M-18096": 7,
-    "M-20232": 8,
-}
-
 # --- Fungsi MLOps: Feature Engineering ---
 # Fungsi ini menyiapkan fitur dari baris CSV tanpa sensor history (snake_case)
 async def perform_feature_engineering(row: Dict[str, Any]):
@@ -75,13 +66,12 @@ async def insert_sensor_row(row: Dict[str, Any]):
         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING insertion_time;
     """
 
-    # Map string machine ID to integer
+    # Use machine_id string directly
     machine_id_str = row["machine_id"]
-    machine_id_int = MACHINE_ID_MAP.get(machine_id_str, 1)
 
     inserted_records = await execute_query(
         sql_insert,
-        machine_id_int,  # Integer machine ID
+        machine_id_str,  # String machine ID
         row["Type"],  # Machine type (L, M, H)
         row["Air temperature [K]"],
         row["Process temperature [K]"],
@@ -184,11 +174,10 @@ async def run_simulation_loop():
                 )
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);
             """
-            # Map string machine ID to integer
-            machine_id_int = MACHINE_ID_MAP.get(str(machine_id), 1)
+            # Use machine_id string directly
             await execute_query(
                 sql_predict,
-                machine_id_int,
+                str(machine_id),  # String machine ID
                 risk_val,  # Float value, not string
                 rul_estimate,
                 rul_status,
@@ -200,7 +189,35 @@ async def run_simulation_loop():
                 insertion_time,
             )
 
-            # 5) Logging ringkas
+            # --- [BARU] 5) Buat Alert Otomatis Jika Critical ---
+            # Logika: Jika urgency High atau Status Critical, masukkan ke tabel alerts
+            # Ini setara dengan: if (newStatus === MachineStatus.CRITICAL)
+            
+            is_critical = (urgency_text.upper() == "HIGH") or (status_text.upper() == "CRITICAL")
+            
+            if is_critical:
+                alert_message = f"Deteksi Bahaya: {failure_type}. Tindakan: {action_text}"
+                
+                # Query Insert Alert
+                sql_alert = """
+                    INSERT INTO alerts (machine_id, message, severity, created_at)
+                    VALUES ($1, $2, $3, $4);
+                """
+                
+                # Eksekusi Query
+                await execute_query(
+                    sql_alert,
+                    str(machine_id),
+                    alert_message,
+                    "HIGH",          # Severity fixed to HIGH for critical
+                    insertion_time   # Gunakan waktu yang sama dengan data sensor
+                )
+                
+                # Optional Log untuk debug
+                print(f"   >>> [ALERT TRIGGERED] Machine: {machine_id} | Msg: {alert_message}")
+
+
+            # 6) Logging ringkas
             log_prediction(machine_id, risk_str, rul_estimate, rul_status, rul_minutes)
 
         except asyncio.CancelledError:
