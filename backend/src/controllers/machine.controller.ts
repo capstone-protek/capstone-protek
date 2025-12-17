@@ -1,7 +1,23 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 
 const prisma = new PrismaClient();
+
+// Opsi include yang reusable (agar kodingan rapi)
+const machineInclude = {
+    sensor_data: {
+        take: 1,
+        orderBy: { insertion_time: 'desc' as const }
+    },
+    prediction_results: {
+        take: 1,
+        orderBy: { prediction_time: 'desc' as const }
+    },
+    alerts: {
+        take: 5,
+        orderBy: { timestamp: 'desc' as const }
+    }
+};
 
 // GET /api/machines
 export const getMachines = async (req: Request, res: Response) => {
@@ -9,26 +25,17 @@ export const getMachines = async (req: Request, res: Response) => {
     const machinesList = await prisma.machines.findMany({
       orderBy: { name: 'asc' },
       include: {
-        // Include alerts agar FE tahu status detailnya
         alerts: {
             where: { severity: 'CRITICAL' }, 
             take: 1
+        },
+        prediction_results: {
+            take: 1,
+            orderBy: { prediction_time: 'desc' }
         }
       }
     });
-    
-    // Optional: Mapping ke camelCase jika Frontend Anda menggunakan 'asetId' bukan 'aset_id'
-    const formatted = machinesList.map(m => ({
-      id: m.id,
-      asetId: m.aset_id, // Map aset_id -> asetId
-      name: m.name,
-      status: m.status,
-      createdAt: m.created_at,
-      updatedAt: m.updated_at,
-      alerts: m.alerts
-    }));
-    
-    res.json(formatted);
+    res.json(machinesList);
   } catch (error) {
     console.error("Error fetching machines:", error);
     res.status(500).json({ error: "Failed to fetch machines" });
@@ -36,36 +43,27 @@ export const getMachines = async (req: Request, res: Response) => {
 };
 
 // GET /api/machines/:id
+// Bisa menerima ID (Int: 1) atau Machine ID (String: "M-14850")
 export const getMachineDetail = async (req: Request, res: Response) => {
   const { id } = req.params; 
   
-  if (!id) {
-    return res.status(400).json({ error: "Machine ID is required" });
-  }
+  if (!id) return res.status(400).json({ error: "Machine identifier is required" });
 
   try {
-    let machine;
+    // Tentukan tipe pencarian untuk TypeScript
+    const whereInput: Prisma.machinesWhereUniqueInput = !isNaN(Number(id))
+        ? { id: Number(id) }              // Cari pakai Primary Key (Int)
+        : { machine_id: String(id) };     // Cari pakai machine_id (String) -> DULU ASET_ID
 
-    // LOGIC: Cek apakah inputnya Angka (Internal ID) atau String (Aset ID)
-    if (!isNaN(Number(id))) {
-        // Kalau angka (misal: 1), cari by internal ID
-        machine = await prisma.machines.findUnique({ 
-            where: { id: Number(id) } 
-        });
-    } else {
-        // Kalau string (misal: M-14850), cari by aset_id
-        machine = await prisma.machines.findUnique({ 
-            where: { aset_id: String(id) } 
-        });
-    }
+    const machine = await prisma.machines.findUnique({ 
+        where: whereInput,
+        include: machineInclude
+    });
 
     if (!machine) return res.status(404).json({ error: "Machine not found" });
     
-    // Return dengan format yang konsisten (bisa dimap jika perlu)
-    res.json({
-        ...machine,
-        asetId: machine.aset_id // Tambahan helper field untuk FE
-    });
+    res.json(machine);
+
   } catch (error) {
     console.error("Error details:", error);
     res.status(500).json({ error: "Server error" });
@@ -76,50 +74,48 @@ export const getMachineDetail = async (req: Request, res: Response) => {
 export const getMachineHistory = async (req: Request, res: Response) => {
   const { id } = req.params;
 
-  if (!id) return res.status(400).json({ error: "Machine ID is required" });
+  if (!id) return res.status(400).json({ error: "Machine identifier is required" });
 
   try {
-    // Variabel penampung TARGET STRING (aset_id)
-    let targetAsetId: string;
+    let targetMachineStringId: string;
 
+    // Logic: Kita butuh String "M-14850" untuk query ke tabel sensor_data
+    // (Karena di schema baru, relasinya pakai String)
+    
     if (!isNaN(Number(id))) {
-      // Skenario 1: User input Angka (ID Internal, misal: 1)
-      // Kita harus cari "aset_id" string-nya (misal: "M-14850")
+      // Jika user kirim angka (1), kita cari dulu string "M-14850"-nya
       const machine = await prisma.machines.findUnique({
         where: { id: Number(id) },
-        select: { aset_id: true }
+        select: { machine_id: true } // Ambil kolom machine_id
       });
       
       if (!machine) return res.status(404).json({ error: "Machine not found" });
-      targetAsetId = machine.aset_id;
-
+      targetMachineStringId = machine.machine_id;
     } else {
-      // Skenario 2: User input String (misal: "M-14850")
-      targetAsetId = String(id);
+      // Jika user sudah kirim string ("M-14850"), langsung pakai
+      targetMachineStringId = String(id);
     }
 
-    // QUERY DATABASE
     const rows = await prisma.sensor_data.findMany({
       where: { 
-        // ✅ Pasca 'npx prisma generate', ini akan menerima String tanpa error
-        machine_id: targetAsetId 
+        machine_id: targetMachineStringId // Sekarang where-nya String
       },
       take: 100,
       orderBy: { insertion_time: 'desc' }
     });
 
-    // MAPPING DATA
-    const history = rows.map((r) => ({
+    // Format Data untuk Frontend
+    const history = rows.map(r => ({
       id: r.id,
       machineId: r.machine_id,
-      type: r.type,
+      timestamp: r.insertion_time, 
       air_temperature_k: r.air_temperature_k,
       process_temperature_k: r.process_temperature_k,
       rotational_speed_rpm: r.rotational_speed_rpm,
       torque_nm: r.torque_nm,
       tool_wear_min: r.tool_wear_min,
-      timestamp: r.insertion_time.toISOString(),
-    })).reverse();
+      type: r.type,
+    })).reverse(); 
 
     res.json(history);
   } catch (error) {

@@ -1,15 +1,13 @@
-// src/routes/alert.routes.ts
-
 import { Router } from 'express';
-import { getAllAlerts } from '../controllers/alert.controller';
+import { getAllAlerts, getAlertsByMachine } from '../controllers/alert.controller';
 
 const router = Router();
 
-// URL: /api/alerts/
-// Method: GET
-// Action: panggil controller getAllAlerts
+// URL: /api/alerts
 router.get('/', getAllAlerts);
 
-// (Nanti Anda bisa tambahkan router.get('/:id', getAlertById), dll.)
+// URL: /api/alerts/machine/M-14850
+// Untuk menampilkan history alert di halaman detail mesin
+router.get('/machine/:machineId', getAlertsByMachine);
 
 export default router;
