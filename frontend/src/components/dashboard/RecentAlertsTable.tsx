@@ -1,99 +1,119 @@
-import { Link } from "react-router-dom";
-import { ExternalLink } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { mockAlerts } from "@/data/mockData";
-import type { AlertPriority } from "@/types";
-import { cn } from "@/lib/utils";
+import type { AlertData } from "@/types";
+import { AlertTriangle, AlertOctagon, Info, CheckCircle2 } from "lucide-react";
 
-const priorityStyles: Record<AlertPriority, string> = {
-  KRITIS: "status-badge-danger",
-  TINGGI: "status-badge-warning",
-  SEDANG: "status-badge-info",
-  RENDAH: "status-badge-success",
-};
-
-function formatTimeAgo(timestamp: string): string {
-  const now = new Date();
-  const date = new Date(timestamp);
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / (1000 * 60));
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  return `${Math.floor(diffHours / 24)}d ago`;
+interface RecentAlertsTableProps {
+  data?: AlertData[];
 }
 
-export function RecentAlertsTable() {
-  const recentAlerts = mockAlerts.slice(0, 5);
+export const RecentAlertsTable = ({ data = [] }: RecentAlertsTableProps) => {
+  
+  // 1. Helper function untuk menentukan warna & icon berdasarkan severity
+  const getSeverityBadge = (severity: string) => {
+    switch (severity) {
+      case "CRITICAL":
+        return (
+          <div className="flex items-center gap-2 text-red-600 bg-red-100 dark:bg-red-900/30 dark:text-red-400 px-2 py-1 rounded-full w-fit">
+            <AlertOctagon className="h-4 w-4" />
+            <span className="text-xs font-bold">CRITICAL</span>
+          </div>
+        );
+      case "WARNING":
+        return (
+          <div className="flex items-center gap-2 text-yellow-600 bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-400 px-2 py-1 rounded-full w-fit">
+            <AlertTriangle className="h-4 w-4" />
+            <span className="text-xs font-bold">WARNING</span>
+          </div>
+        );
+      case "INFO":
+        return (
+          <div className="flex items-center gap-2 text-blue-600 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-1 rounded-full w-fit">
+            <Info className="h-4 w-4" />
+            <span className="text-xs font-bold">INFO</span>
+          </div>
+        );
+      default:
+        return <span className="text-gray-500">{severity}</span>;
+    }
+  };
+
+  // 2. Format Tanggal agar enak dibaca (Contoh: 10 Des, 14:30)
+  const formatDate = (dateString: string | Date) => {
+    return new Date(dateString).toLocaleString("id-ID", {
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
 
   return (
-    <Card className="shadow-lg border-2 border-primary/10 hover:shadow-xl hover:border-primary/20 transition-all bg-white">
-      <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-border/50">
+    <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
+      {/* Header Card */}
+      <div className="p-6 flex flex-row items-center justify-between pb-4">
         <div>
-          <CardTitle className="text-xl font-bold text-foreground">Recent Alerts</CardTitle>
-          <CardDescription className="mt-1.5">Latest maintenance alerts and warnings</CardDescription>
+          <h3 className="font-bold text-lg">Recent Alerts</h3>
+          <p className="text-sm text-muted-foreground">
+            Riwayat peringatan sistem terbaru.
+          </p>
         </div>
-        <Button variant="outline" size="sm" asChild>
-          <Link to="/alerts">
-            View All <ExternalLink className="ml-2 h-4 w-4" />
-          </Link>
-        </Button>
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Machine</TableHead>
-              <TableHead>Alert Type</TableHead>
-              <TableHead>Priority</TableHead>
-              <TableHead>Time</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {recentAlerts.map((alert) => (
-              <TableRow key={alert.id}>
-                <TableCell>
-                  <Link
-                    to={`/machine/${alert.asetId}`}
-                    className="font-medium text-primary hover:underline"
-                  >
-                    {alert.asetId}
-                  </Link>
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {alert.diagnosis}
-                </TableCell>
-                <TableCell>
-                  <span
-                    className={cn("status-badge capitalize", priorityStyles[alert.priority])}
-                  >
-                    {alert.priority}
-                  </span>
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {formatTimeAgo(alert.timestamp)}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+        {/* Badge jumlah alert */}
+        <span className="bg-muted text-muted-foreground text-xs font-medium px-2.5 py-0.5 rounded-full">
+          {data.length} Total
+        </span>
+      </div>
+
+      {/* Konten Tabel */}
+      <div className="p-0 overflow-x-auto">
+        {data.length === 0 ? (
+          // --- TAMPILAN JIKA DATA KOSONG ---
+          <div className="flex flex-col items-center justify-center py-10 text-center">
+            <CheckCircle2 className="h-10 w-10 text-green-500 mb-2" />
+            <p className="text-lg font-medium">All Systems Operational</p>
+            <p className="text-sm text-muted-foreground">
+              Tidak ada alert yang tercatat hari ini.
+            </p>
+          </div>
+        ) : (
+          // --- TAMPILAN TABEL ---
+          <table className="w-full text-sm text-left">
+            <thead className="bg-muted/50 text-muted-foreground uppercase text-xs">
+              <tr>
+                <th className="px-6 py-3 font-medium">Severity</th>
+                <th className="px-6 py-3 font-medium">Machine</th>
+                <th className="px-6 py-3 font-medium">Message</th>
+                <th className="px-6 py-3 font-medium">Time</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {/* Mapping Data alert ke baris tabel */}
+              {data.map((alert) => (
+                <tr 
+                  key={alert.id} 
+                  className="bg-card hover:bg-muted/50 transition-colors"
+                >
+                  <td className="px-6 py-4">
+                    {getSeverityBadge(alert.severity)}
+                  </td>
+                  <td className="px-6 py-4 font-medium text-foreground">
+                    <div>
+                      {alert.machine.name}
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        {alert.machine.asetId}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-muted-foreground max-w-md truncate">
+                    {alert.message}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-muted-foreground">
+                    {formatDate(alert.timestamp)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
   );
-}
+};

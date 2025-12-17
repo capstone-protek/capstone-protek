@@ -1,593 +1,156 @@
 openapi: 3.0.0
 info:
-  title: Predictive Maintenance Copilot API
-  description: API Documentation for Capstone Project A25-CS050 with Dashboard, Simulation, and ML Integration
+  title: Protek AI API
   version: 2.0.0
-  contact:
-    name: Backend Team
-
+  description: API Documentation for Protek Predictive Maintenance System
 servers:
-  - url: https://api-protek-production.up.railway.app
-    description: 🚀 Production Server (Railway)
-  - url: http://localhost:3000
-    description: 💻 Local Development
-
-tags:
-  - name: Dashboard
-    description: Ringkasan dan visualisasi data dashboard
-  - name: Prediction
-    description: Integrasi Machine Learning untuk prediksi kerusakan
-  - name: Simulation
-    description: Kontrol simulasi data realtime
-  - name: Machines
-    description: Manajemen data mesin
-  - name: Alerts
-    description: Notifikasi dan riwayat kerusakan
-
-components:
-  schemas:
-    ChartDataPoint:
-      type: object
-      properties:
-        time:
-          type: string
-          format: date-time
-          example: "2025-12-14T10:30:00Z"
-        val_torque:
-          type: number
-          example: 12.5
-        val_rpm:
-          type: number
-          example: 1200
-        val_temp:
-          type: number
-          example: 300.5
-        status:
-          type: string
-          example: "⚠️ CRITICAL FAILURE DETECTED"
-        risk:
-          type: number
-          example: 78.3
-
-    DashboardStats:
-      type: object
-      properties:
-        totalMachines:
-          type: integer
-          example: 4
-        criticalMachines:
-          type: integer
-          example: 1
-        todaysAlerts:
-          type: integer
-          example: 5
-        systemHealth:
-          type: number
-          example: 75.0
-
-    AlertData:
-      type: object
-      properties:
-        id:
-          type: integer
-          example: 1
-        message:
-          type: string
-          example: "Critical Anomaly Detected: Power Failure"
-        severity:
-          type: string
-          enum: [CRITICAL, WARNING, INFO]
-          example: "CRITICAL"
-        timestamp:
-          type: string
-          format: date-time
-          example: "2025-12-14T10:30:00Z"
-        machine_id:
-          type: integer
-          example: 1
-        machine:
-          type: object
-          properties:
-            id:
-              type: integer
-              example: 1
-            aset_id:
-              type: string
-              example: "M-14850"
-            name:
-              type: string
-              example: "CNC Milling Machine"
-            status:
-              type: string
-              enum: [CRITICAL, WARNING, HEALTHY, OFFLINE]
-              example: "CRITICAL"
-
-    Machine:
-      type: object
-      properties:
-        id:
-          type: integer
-          example: 1
-        aset_id:
-          type: string
-          example: "M-14850"
-        name:
-          type: string
-          example: "CNC Milling Machine"
-        status:
-          type: string
-          enum: [CRITICAL, WARNING, HEALTHY, OFFLINE]
-          example: "HEALTHY"
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-
-    PredictPayload:
-      type: object
-      required:
-        - Machine_ID
-        - Type
-        - Air_Temp
-        - Process_Temp
-        - RPM
-        - Torque
-        - Tool_Wear
-      properties:
-        Machine_ID:
-          type: string
-          example: "M-14850"
-        Type:
-          type: string
-          description: "Quality type (L/M/H)"
-          example: "H"
-        Air_Temp:
-          type: number
-          example: 300.5
-        Process_Temp:
-          type: number
-          example: 310.5
-        RPM:
-          type: integer
-          example: 1200
-        Torque:
-          type: number
-          example: 12.5
-        Tool_Wear:
-          type: integer
-          example: 50
+  - url: http://localhost:4000
+    description: Local Server
 
 paths:
-  # ========== DASHBOARD ENDPOINTS ==========
-
-  /api/dashboard/chart-history:
-    get:
-      summary: Get Chart History (Last 50 Points)
-      tags: [Dashboard]
-      description: Mengambil 50 data point terakhir untuk visualisasi grafik dengan JOIN sensor_data dan prediction_results
-      parameters:
-        - in: query
-          name: machineId
-          schema:
-            type: string
-            default: "M-14850"
-          description: Machine ID (e.g., M-14850)
-      responses:
-        200:
-          description: Success
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: "success"
-                  machine_id:
-                    type: string
-                    example: "M-14850"
-                  count:
-                    type: integer
-                    example: 50
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/ChartDataPoint'
-        500:
-          description: Server error
-
-  /api/dashboard/chart-latest:
-    get:
-      summary: Get Latest Chart Point (Realtime)
-      tags: [Dashboard]
-      description: Mengambil 1 data point terbaru untuk polling realtime (recommended interval 1 second)
-      parameters:
-        - in: query
-          name: machineId
-          schema:
-            type: string
-            default: "M-14850"
-          description: Machine ID
-      responses:
-        200:
-          description: Success
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: "success"
-                  machine_id:
-                    type: string
-                    example: "M-14850"
-                  data:
-                    $ref: '#/components/schemas/ChartDataPoint'
-        500:
-          description: Server error
-
+  # --- DASHBOARD ---
   /api/dashboard/stats:
     get:
-      summary: Get Dashboard Statistics
+      summary: Get Dashboard Statistics (Cards)
       tags: [Dashboard]
-      description: Mengambil summary untuk dashboard cards (total mesin, mesin kritis, alert hari ini, health score)
       responses:
         200:
-          description: Success
+          description: OK
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  status:
-                    type: string
-                    example: "success"
-                  summary:
-                    $ref: '#/components/schemas/DashboardStats'
-                  timestamp:
-                    type: string
-                    format: date-time
-        500:
-          description: Server error
+                  total: { type: integer }
+                  healthy: { type: integer }
+                  warning: { type: integer }
+                  critical: { type: integer }
+                  offline: { type: integer }
 
-  /api/dashboard/alerts:
+  /api/dashboard/machines:
     get:
-      summary: Get Recent Alerts
+      summary: Get Machine List for Dashboard Table
       tags: [Dashboard]
-      description: Mengambil daftar alert terbaru dengan informasi mesin
-      parameters:
-        - in: query
-          name: limit
-          schema:
-            type: integer
-            default: 10
-          description: Jumlah alert yang diambil
       responses:
         200:
-          description: Success
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: "success"
-                  count:
-                    type: integer
-                    example: 5
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/AlertData'
-        500:
-          description: Server error
-
-  # ========== PREDICTION ENDPOINT ==========
-
-  /api/predict:
-    post:
-      summary: Trigger ML Prediction
-      tags: [Prediction]
-      description: Mengirim data sensor ke ML API. Jika hasil CRITICAL, backend otomatis membuat Alert di database.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PredictPayload'
-      responses:
-        200:
-          description: Prediction Success
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: "success"
-                  input_saved:
-                    type: boolean
-                    example: true
-                  alert_created:
-                    type: boolean
-                    description: True jika hasil prediksi CRITICAL
-                    example: true
-                  ml_result:
-                    type: object
-                    properties:
-                      Machine_ID:
-                        type: string
-                        example: "M-14850"
-                      Risk_Probability:
-                        type: string
-                        example: "78.3%"
-                      RUL_Status:
-                        type: string
-                        example: "🚨 CRITICAL"
-                      Status:
-                        type: string
-                        example: "⚠️ CRITICAL FAILURE DETECTED"
-                      Failure_Type:
-                        type: string
-                        example: "Power Failure"
-                      Action:
-                        type: string
-                        example: "Cek tegangan listrik & kurangi beban RPM."
-        400:
-          description: Bad Request
-        500:
-          description: Server error
-
-  # ========== SIMULATION ENDPOINTS ==========
-
-  /api/simulation/status:
-    get:
-      summary: Get Simulation Status
-      tags: [Simulation]
-      description: Mendapatkan status simulasi saat ini
-      responses:
-        200:
-          description: Success
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: "success"
-                  isRunning:
-                    type: boolean
-                    example: false
-                  timestamp:
-                    type: string
-                    format: date-time
-        500:
-          description: Server error
-
-  /api/simulation/start:
-    post:
-      summary: Start Simulation
-      tags: [Simulation]
-      description: Memulai simulasi injeksi 40,000 baris data sintetis ke database secara bertahap
-      responses:
-        200:
-          description: Simulation started successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: "success"
-                  message:
-                    type: string
-                    example: "Simulasi data realtime dimulai!"
-                  isRunning:
-                    type: boolean
-                    example: true
-        400:
-          description: Simulation already running
-        500:
-          description: Server error
-
-  /api/simulation/stop:
-    get:
-      summary: Stop Simulation
-      tags: [Simulation]
-      description: Menghentikan simulasi yang sedang berjalan
-      responses:
-        200:
-          description: Simulation stopped successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: "success"
-                  message:
-                    type: string
-                    example: "Simulasi berhasil dihentikan."
-                  isRunning:
-                    type: boolean
-                    example: false
-        400:
-          description: Simulation not running
-        500:
-          description: Server error
-
-  # ========== MACHINE ENDPOINTS ==========
-
-  /api/machines:
-    get:
-      summary: List All Machines
-      tags: [Machines]
-      description: Mengambil daftar semua mesin dengan status terkini
-      responses:
-        200:
-          description: Success
+          description: OK
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Machine'
-        500:
-          description: Server error
+                  $ref: '#/components/schemas/MachineOverview'
 
+  # --- MACHINES ---
   /api/machines/{id}:
     get:
-      summary: Get Machine Detail
+      summary: Get Machine Detail (Sensor + Prediction)
       tags: [Machines]
-      description: Mengambil detail mesin berdasarkan ID (numeric) atau Aset ID (string seperti M-14850)
       parameters:
         - in: path
           name: id
-          required: true
           schema:
             type: string
-          description: Machine ID (angka atau aset_id seperti M-14850)
-          example: "M-14850"
+          required: true
+          description: Machine ID (e.g., M-14850) or ID (1)
       responses:
         200:
           description: Success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Machine'
-        404:
-          description: Machine not found
-        500:
-          description: Server error
+                $ref: '#/components/schemas/MachineDetail'
 
   /api/machines/{id}/history:
     get:
-      summary: Get Machine Sensor History
+      summary: Get Sensor History Chart Data
       tags: [Machines]
-      description: Mengambil 100 data sensor historis (time series) untuk grafik
       parameters:
         - in: path
           name: id
           required: true
-          schema:
-            type: string
-          description: Machine ID atau Aset ID
-          example: "M-14850"
+          schema: { type: string }
       responses:
         200:
-          description: Success
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    machineId:
-                      type: string
-                      example: "M-14850"
-                    timestamp:
-                      type: string
-                      format: date-time
-                    air_temperature_k:
-                      type: number
-                    rotational_speed_rpm:
-                      type: integer
-                    torque_nm:
-                      type: number
-                    tool_wear_min:
-                      type: integer
-        404:
-          description: Machine not found
-        500:
-          description: Server error
+          description: OK
 
-  # ========== ALERT ENDPOINTS ==========
-
-  /api/alerts:
-    get:
-      summary: List All Alerts
-      tags: [Alerts]
-      description: Mengambil riwayat semua alert/kerusakan yang tersimpan di database
-      responses:
-        200:
-          description: Success
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/AlertData'
-        500:
-          description: Server error
-
-  # ========== MACHINES LIST-LITE ENDPOINT ==========
-
-  /api/machines/list-lite:
-    get:
-      summary: Get Machines (Lite Version)
-      tags: [Machines]
-      description: Mengambil daftar mesin dengan informasi ringkas (id, aset_id, name, status)
-      responses:
-        200:
-          description: Success
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id:
-                      type: integer
-                    aset_id:
-                      type: string
-                    name:
-                      type: string
-                    status:
-                      type: string
-        500:
-          description: Server error
-
-  # ========== CHAT/CHATBOT ENDPOINT ==========
-
-  /api/chat:
+  # --- PREDICT ---
+  /api/predict:
     post:
-      summary: Ask Chatbot
-      tags: [Chat]
-      description: Kirim pertanyaan ke chatbot untuk mendapatkan insights tentang maintenance
+      summary: Receive Prediction Result from Python/ML
+      tags: [Prediction]
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required:
-                - message
               properties:
-                message:
-                  type: string
-                  example: "Mesin M-14850 dalam kondisi apa?"
+                machine_id: { type: string, example: "M-14850" }
+                risk_probability: { type: number, format: float, example: 0.85 }
+                rul_estimate: { type: string, example: "2 Jam" }
+                rul_minutes_val: { type: number, example: 120.5 }
+                pred_status: { type: string, example: "CRITICAL" }
+                failure_type: { type: string, example: "Overheating" }
+                action: { type: string, example: "Check Coolant" }
+                urgency: { type: string, example: "High" }
+      responses:
+        201:
+          description: Created
+
+  /api/predict/latest/{machineId}:
+    get:
+      summary: Get Latest Prediction by Machine ID
+      tags: [Prediction]
+      parameters:
+        - in: path
+          name: machineId
+          required: true
+          schema: { type: string }
       responses:
         200:
-          description: Success
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  reply:
-                    type: string
-                    example: "Mesin M-14850 saat ini dalam status CRITICAL dengan risk 78.3%"
-        400:
-          description: Bad request (message required)
-        500:
-          description: Server error
+          description: OK
+
+  # --- ALERTS ---
+  /api/alerts:
+    get:
+      summary: Get All Active Alerts
+      tags: [Alerts]
+      responses:
+        200:
+          description: OK
+
+  # --- CHATBOT ---
+  /api/chat:
+    post:
+      summary: Chat with AI Copilot
+      tags: [Chatbot]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message: { type: string, example: "Kondisi mesin M-14850 gimana?" }
+      responses:
+        200:
+          description: AI Response
+
+components:
+  schemas:
+    MachineOverview:
+      type: object
+      properties:
+        id: { type: integer }
+        machine_id: { type: string }
+        name: { type: string }
+        status: { type: string }
+    MachineDetail:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/MachineOverview'
+        - type: object
+          properties:
+            sensor_data: { type: array }
+            prediction_results: { type: array }
+            alerts: { type: array }

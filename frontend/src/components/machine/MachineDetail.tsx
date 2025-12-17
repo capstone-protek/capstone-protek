@@ -1,3 +1,4 @@
+import React from "react";
 import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, AlertTriangle, CheckCircle, XCircle, Wrench, Calendar } from "lucide-react";
 import {
@@ -26,8 +27,10 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { mockMachines as machines, maintenanceHistory, mockAlerts as alerts, mockMachineDetails } from "@/data/mockData";
-import type { MachineStatus, MachineDetails, Alert } from "@/types";
+import { useQuery } from "@tanstack/react-query";
+import { dashboardService } from "@/services/api";
+import { mockMachines as machines, maintenanceHistory, mockAlerts as alerts } from "@/data/mockData";
+import type { MachineStatus, MachineDetailResponse, AlertData, SensorHistoryData } from "@/types";
 import { cn } from "@/lib/utils";
 
 const statusConfig: Record<MachineStatus, { icon: typeof AlertTriangle; label: string; className: string }> = {
@@ -50,11 +53,68 @@ export function MachineDetail() {
   const { id } = useParams<{ id: string }>();
   const asetId = id as string;
 
-  // Try to get detailed info first, then fallback to summary
-  const detail: MachineDetails | undefined = mockMachineDetails[asetId];
+  // Fetch machine detail from API
+  const { data: detail, isLoading: isLoadingDetail } = useQuery<MachineDetailResponse>({
+    queryKey: ['machine-detail', asetId],
+    queryFn: () => dashboardService.getMachineDetail(asetId),
+    enabled: !!asetId,
+  });
+
+  // Fetch sensor history from API
+  const { data: sensorHistoryData = [], isLoading: isLoadingHistory } = useQuery<SensorHistoryData[]>({
+    queryKey: ['machine-history', asetId],
+    queryFn: () => dashboardService.getHistory(asetId),
+    enabled: !!asetId,
+  });
+
+  // Fallback to mock data if API fails
   const summary = machines.find((m: { asetId: string; name: string; status: MachineStatus }) => m.asetId === asetId);
 
-  if (!detail && !summary) {
+  // Compute latest reading from sensor history
+  const latestReading = React.useMemo(() => {
+    if (!sensorHistoryData || sensorHistoryData.length === 0) return null;
+    
+    // Group by timestamp and get latest readings for each sensor type
+    const sensorTypes = ['Air_Temp', 'Process_Temp', 'RPM', 'Torque', 'Tool_Wear'];
+    const latestByType: Record<string, SensorHistoryData> = {};
+    
+    sensorHistoryData.forEach((reading) => {
+      if (sensorTypes.includes(reading.type)) {
+        const existing = latestByType[reading.type];
+        if (!existing || new Date(reading.timestamp) > new Date(existing.timestamp)) {
+          latestByType[reading.type] = reading;
+        }
+      }
+    });
+
+    // Check if we have all required sensor types
+    const hasAllSensors = sensorTypes.every(type => latestByType[type]);
+    if (!hasAllSensors) return null;
+
+    // Get the latest timestamp
+    const timestamps = Object.values(latestByType).map(r => new Date(r.timestamp));
+    const latestTimestamp = new Date(Math.max(...timestamps.map(d => d.getTime())));
+
+    return {
+      timestamp: latestTimestamp.toISOString(),
+      airTemp: latestByType['Air_Temp']?.value || 0,
+      processTemp: latestByType['Process_Temp']?.value || 0,
+      rpm: latestByType['RPM']?.value || 0,
+      torque: latestByType['Torque']?.value || 0,
+      toolWear: latestByType['Tool_Wear']?.value || 0,
+    };
+  }, [sensorHistoryData]);
+
+  if (isLoadingDetail) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <p className="text-muted-foreground">Loading machine details...</p>
+      </div>
+    );
+  }
+
+  const machine = detail ?? summary;
+  if (!machine) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
         <h2 className="text-xl font-semibold mb-4">Machine not found</h2>
@@ -68,10 +128,9 @@ export function MachineDetail() {
     );
   }
 
-  const machine = detail ?? summary!;
   const status = statusConfig[machine.status as MachineStatus];
   const StatusIcon = status.icon;
-  const machineAlerts = alerts.filter((a: Alert) => a.asetId === asetId);
+  const machineAlerts = alerts.filter((a: AlertData) => a.machine.asetId === asetId);
   const machineMaintenanceHistory = maintenanceHistory.filter((m: { id: string; machineId: string; date: string; type: string; description: string }) => m.machineId === asetId);
   const sensorHistory = generateSensorHistory();
 
@@ -119,13 +178,11 @@ export function MachineDetail() {
                 <p className="font-semibold">{machine.status}</p>
               </div>
             </div>
-            {detail && detail.lastReading && (
-              <>
-                <div className="text-sm">
-                  <p className="text-muted-foreground mb-2">Last Reading Timestamp</p>
-                  <p className="text-xs">{new Date(detail.lastReading.timestamp).toLocaleString()}</p>
-                </div>
-              </>
+            {latestReading && (
+              <div className="text-sm">
+                <p className="text-muted-foreground mb-2">Last Reading Timestamp</p>
+                <p className="text-xs">{new Date(latestReading.timestamp).toLocaleString()}</p>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -136,27 +193,29 @@ export function MachineDetail() {
             <CardDescription>Current readings from machine sensors</CardDescription>
           </CardHeader>
           <CardContent>
-            {detail && detail.lastReading ? (
+            {isLoadingHistory ? (
+              <p className="text-sm text-muted-foreground">Loading sensor data...</p>
+            ) : latestReading ? (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                 <div>
                   <p className="text-muted-foreground">Air Temperature</p>
-                  <p className="font-semibold">{detail.lastReading.airTemp}°C</p>
+                  <p className="font-semibold">{latestReading.airTemp.toFixed(1)}°C</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Process Temperature</p>
-                  <p className="font-semibold">{detail.lastReading.processTemp}°C</p>
+                  <p className="font-semibold">{latestReading.processTemp.toFixed(1)}°C</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">RPM</p>
-                  <p className="font-semibold">{detail.lastReading.rpm}</p>
+                  <p className="font-semibold">{Math.round(latestReading.rpm)}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Torque</p>
-                  <p className="font-semibold">{detail.lastReading.torque}</p>
+                  <p className="font-semibold">{latestReading.torque.toFixed(1)}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Tool Wear</p>
-                  <p className="font-semibold">{detail.lastReading.toolWear}</p>
+                  <p className="font-semibold">{Math.round(latestReading.toolWear)}</p>
                 </div>
               </div>
             ) : (
@@ -172,27 +231,29 @@ export function MachineDetail() {
           <CardTitle className="text-lg">Real-time Sensor Data</CardTitle>
         </CardHeader>
         <CardContent>
-          {detail && detail.lastReading ? (
+          {isLoadingHistory ? (
+            <p className="text-sm text-muted-foreground">Loading sensor data...</p>
+          ) : latestReading ? (
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               <div className="p-3 rounded-lg bg-muted/50 border border-border">
                 <p className="text-xs text-muted-foreground">Air Temp</p>
-                <p className="text-lg font-semibold">{detail.lastReading.airTemp}°C</p>
+                <p className="text-lg font-semibold">{latestReading.airTemp.toFixed(1)}°C</p>
               </div>
               <div className="p-3 rounded-lg bg-muted/50 border border-border">
                 <p className="text-xs text-muted-foreground">Process Temp</p>
-                <p className="text-lg font-semibold">{detail.lastReading.processTemp}°C</p>
+                <p className="text-lg font-semibold">{latestReading.processTemp.toFixed(1)}°C</p>
               </div>
               <div className="p-3 rounded-lg bg-muted/50 border border-border">
                 <p className="text-xs text-muted-foreground">RPM</p>
-                <p className="text-lg font-semibold">{detail.lastReading.rpm}</p>
+                <p className="text-lg font-semibold">{Math.round(latestReading.rpm)}</p>
               </div>
               <div className="p-3 rounded-lg bg-muted/50 border border-border">
                 <p className="text-xs text-muted-foreground">Torque</p>
-                <p className="text-lg font-semibold">{detail.lastReading.torque}</p>
+                <p className="text-lg font-semibold">{latestReading.torque.toFixed(1)}</p>
               </div>
               <div className="p-3 rounded-lg bg-muted/50 border border-border">
                 <p className="text-xs text-muted-foreground">Tool Wear</p>
-                <p className="text-lg font-semibold">{detail.lastReading.toolWear}</p>
+                <p className="text-lg font-semibold">{Math.round(latestReading.toolWear)}</p>
               </div>
             </div>
           ) : (
@@ -255,33 +316,28 @@ export function MachineDetail() {
           <CardContent>
             {machineAlerts.length > 0 ? (
               <div className="space-y-3">
-                {machineAlerts.map((alert: Alert) => (
+                {machineAlerts.map((alert: AlertData) => (
                   <div
-                    key={alert.id || `${alert.asetId}-${alert.timestamp}`}
+                    key={alert.id || `${alert.machine.asetId}-${alert.timestamp}`}
                     className="p-3 rounded-lg border bg-muted/30"
                   >
                     <div className="flex items-center gap-2 mb-1">
                       <Badge
                         variant={
-                          alert.priority === "KRITIS"
+                          alert.severity === "CRITICAL"
                             ? "destructive"
-                            : alert.priority === "TINGGI"
+                            : alert.severity === "WARNING"
                             ? "default"
-                            : alert.priority === "SEDANG"
-                            ? "secondary"
-                            : "outline"
+                            : "secondary"
                         }
                       >
-                        {alert.priority}
+                        {alert.severity}
                       </Badge>
                       <span className="text-xs text-muted-foreground">
                         {new Date(alert.timestamp).toLocaleDateString()}
                       </span>
                     </div>
-                    <p className="text-sm font-medium">{alert.diagnosis}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Confidence: {(alert.probabilitas * 100).toFixed(1)}%
-                    </p>
+                    <p className="text-sm font-medium">{alert.message}</p>
                   </div>
                 ))}
               </div>

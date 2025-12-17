@@ -146,7 +146,7 @@ class MaintenanceModel:
         # ==========================================
         result = {
             "machine_id": input_data.get('machine_id', 'Unknown'),
-            "risk_probability": f"{prob:.1%}",
+            "risk_probability": round(prob, 4),
             "rul_estimate": rul_message,
             "rul_status": rul_status,
             "rul_minutes": f"{remaining_mins:.0f}"

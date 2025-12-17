@@ -49,22 +49,12 @@ export function StatsCard({
       "relative overflow-hidden border-2 hover:shadow-2xl transition-all duration-300 group hover:-translate-y-1",
       variantStyles[variant]
     )}>
-      {/* Colored left border */}
-      <div className={cn(
-        "absolute left-0 top-0 bottom-0 w-1",
-        variant === "default" && "bg-primary",
-        variant === "success" && "bg-success",
-        variant === "warning" && "bg-warning",
-        variant === "danger" && "bg-destructive",
-        variant === "info" && "bg-info",
-      )} />
       
       <CardContent className="p-6">
         <div className="flex items-start justify-between">
           <div className="space-y-3 flex-1">
             <p className={cn(
-              "text-xs font-semibold uppercase tracking-wider",
-              accentColors[variant]
+              "text-xs font-bold uppercase tracking-wider"
             )}>
               {title}
             </p>

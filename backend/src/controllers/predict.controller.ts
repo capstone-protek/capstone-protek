@@ -1,131 +1,124 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
-import axios from 'axios';
-import { PredictPayload, MLResponse } from '../types';
+import { PrismaClient, MachineStatus } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-// Use ML API URL from env (fall back to production). Keep no trailing slash.
-const ML_API_BASE = process.env.ML_API_URL || 'https://capstone-protek-production.up.railway.app';
-const ML_API_URL = ML_API_BASE.endsWith('/predict') ? ML_API_BASE : `${ML_API_BASE.replace(/\/$/, '')}/predict`;
-
-export const predictMaintenance = async (req: Request, res: Response) => {
+// POST /api/predict/result
+// Endpoint ini menerima data hasil prediksi dari Python/ML
+export const createPrediction = async (req: Request, res: Response) => {
   try {
-    // 1. Terima Data dari Frontend
-    const data: PredictPayload = req.body;
-    
-    // Validasi: Machine_ID wajib ada
-    if (!data.Machine_ID) {
-      return res.status(400).json({ error: "Invalid payload. Machine_ID is required." });
+    const { 
+      machine_id,       // String: "M-14850"
+      risk_probability, // Float: 0.85
+      rul_estimate,     // String: "2 Jam"
+      rul_minutes_val,  // Float: 120.0
+      pred_status,      // String: "CRITICAL"
+      failure_type,     // String: "Overheating"
+      action,           // String: "Check Coolant"
+      urgency           // String: "High"
+    } = req.body;
+
+    // 1. Validasi Input Dasar
+    if (!machine_id) {
+      return res.status(400).json({ error: "machine_id is required" });
     }
 
-    console.log(`[Predict] Processing data for ${data.Machine_ID}...`);
-
-    // 2. Cek Apakah Mesin Ada di DB Lokal? (SANGAT PENTING)
+    // 2. Cek apakah mesin ada di Database Master
+    // FIX TS2353: Ganti 'aset_id' menjadi 'machine_id'
     const machine = await prisma.machines.findUnique({
-      where: { aset_id: data.Machine_ID }
+      where: { 
+        machine_id: String(machine_id) 
+      }
     });
 
-    // Sensor history dihapus (tidak digunakan)
     if (!machine) {
-        console.warn(`   ⚠️ Machine ${data.Machine_ID} not found in DB. Alert cannot be saved.`);
+      return res.status(404).json({ error: `Machine with ID ${machine_id} not found` });
     }
 
-    // 3. Kirim Data ke ML API (Railway)
-    console.log(`   📡 Sending to ML API at ${ML_API_URL}...`);
-    
-    // Transform data to snake_case format expected by ML API
-    const mlPayload = {
-        machine_id: data.Machine_ID,
-        type: data.Type,
-        air_temp: data.Air_Temp,
-        process_temp: data.Process_Temp,
-        rpm: data.RPM,
-        torque: data.Torque,
-        tool_wear: data.Tool_Wear
-    };
-    
-    const mlResponse = await axios.post(ML_API_URL, mlPayload, {
-        headers: { 
-            'Content-Type': 'application/json'
-        },
-        timeout: 10000
+    // 3. Simpan Hasil Prediksi ke Database
+    // FIX TS2322: Pastikan tipe data sesuai schema (String ke String, Float ke Float)
+    const newPrediction = await prisma.prediction_results.create({
+      data: {
+        machine_id: machine.machine_id, // String (Foreign Key merujuk ke machine_id)
+        risk_probability: Number(risk_probability), // Ensure Float
+        rul_estimate: String(rul_estimate || '-'),
+        rul_status: String(pred_status), // Biasanya status RUL sama dengan status prediksi
+        rul_minutes_val: Number(rul_minutes_val || 0),
+        pred_status: String(pred_status),
+        failure_type: String(failure_type || 'None'),
+        action: String(action || 'Monitor'),
+        urgency: String(urgency || 'Low'),
+        prediction_time: new Date()
+      }
     });
 
-    // Parse ML JSON (log raw response for debugging)
-    const rawResult = mlResponse.data;
-    console.log("   ✅ ML Prediction received (raw):", rawResult);
+    // 4. Update Status Mesin di Table Master (Sync Realtime)
+    // Jika prediksi bilang CRITICAL, status mesin juga harus jadi CRITICAL
+    let newStatus: MachineStatus = MachineStatus.HEALTHY;
 
-        // Normalize/compatibility helper to read either PascalCase or snake_case
-        const f = (obj: any, pascal: string, snake: string) => {
-            if (!obj) return undefined;
-            if (Object.prototype.hasOwnProperty.call(obj, pascal)) return obj[pascal];
-            if (Object.prototype.hasOwnProperty.call(obj, snake)) return obj[snake];
-            return undefined;
-        };
-
-        const result = rawResult as any; // keep using typed shape afterwards
-
-        // 4. LOGIC HAKIM (String Matching)
-        const rulStatus = f(result, 'RUL_Status', 'rul_status') || '';
-        const statusText = f(result, 'Status', 'status') || '';
-        const isCritical = (String(rulStatus).includes('CRITICAL')) || (String(statusText).includes('FAILURE'));
-    
-    let alertCreated = false;
-
-    // 5. BUAT ALERT (Hanya jika Kritis & Mesin Ada)
-    if (isCritical && machine) {
-        
-        // KONSTRUKSI PESAN ALERT YANG AMAN
-        // Karena field 'Message' bisa hilang saat failure, kita rakit pesan sendiri
-        let alertMessage = f(result, 'Message', 'message') || "Critical Anomaly Detected";
-        const failureType = f(result, 'Failure_Type', 'failure_type');
-        const actionText = f(result, 'Action', 'action');
-        const urgencyText = f(result, 'Urgency', 'urgency');
-
-        if ((!f(result, 'Message', 'message') || String(f(result, 'Message', 'message')).trim() === '') && failureType) {
-            alertMessage = `${failureType}: ${actionText || 'Check Machine Immediately'}`;
-            if (urgencyText) {
-                alertMessage += ` (${urgencyText})`;
-            }
-        }
-        // Simpan ke Tabel Alert
-        await prisma.alerts.create({
-            data: {
-                machine_id: machine.id,
-                message: alertMessage,
-                severity: 'CRITICAL',
-                timestamp: new Date()
-            }
-        });
-        
-        // Update Status Mesin jadi 'CRITICAL' (Biar merah di dashboard)
-        await prisma.machines.update({
-            where: { id: machine.id },
-            data: { status: 'CRITICAL' }
-        });
-
-        alertCreated = true;
-        console.log("   🚨 CRITICAL ALERT CREATED!");
-    } else if (isCritical && !machine) {
-        console.error("   ❌ CRITICAL DETECTED BUT NO MACHINE IN DB.");
+    // Mapping string dari Python ke Enum Prisma
+    const statusUpper = String(pred_status).toUpperCase();
+    if (statusUpper.includes('CRITICAL')) {
+      newStatus = MachineStatus.CRITICAL;
+    } else if (statusUpper.includes('WARNING')) {
+      newStatus = MachineStatus.WARNING;
+    } else if (statusUpper.includes('OFFLINE')) {
+        newStatus = MachineStatus.OFFLINE;
     }
 
-    // 6. Response Final ke Frontend
-    res.json({
-        status: 'success',
-        input_saved: !!machine, 
-        ml_result: result,
-        alert_created: alertCreated
+    await prisma.machines.update({
+      where: { machine_id: machine.machine_id },
+      data: { 
+        status: newStatus,
+        updated_at: new Date()
+      }
+    });
+
+    // 5. Buat Alert Otomatis Jika Critical (Opsional tapi bagus untuk dashboard)
+    if (newStatus === MachineStatus.CRITICAL) {
+      await prisma.alerts.create({
+        data: {
+          machine_id: machine.machine_id,
+          message: `Deteksi Bahaya: ${failure_type}. Tindakan: ${action}`,
+          severity: 'HIGH',
+          timestamp: new Date()
+        }
+      });
+    }
+
+    res.status(201).json({
+      message: "Prediction saved and machine status updated",
+      data: newPrediction
     });
 
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error('❌ Predict Error:', errorMessage);
-    console.error('❌ Full Error:', error);
-    res.status(500).json({ 
-      error: "Failed to process prediction request",
-      details: errorMessage
-    });
+    console.error("Error saving prediction:", error);
+    res.status(500).json({ error: "Failed to save prediction" });
   }
+};
+
+// GET /api/predict/latest/:machineId
+// Mengambil prediksi terakhir untuk mesin tertentu
+export const getLatestPrediction = async (req: Request, res: Response) => {
+    const { machineId } = req.params;
+
+    try {
+        const prediction = await prisma.prediction_results.findFirst({
+            where: {
+                machine_id: String(machineId) // FIX: Pakai machine_id (String)
+            },
+            orderBy: {
+                prediction_time: 'desc'
+            }
+        });
+
+        if (!prediction) {
+            return res.status(404).json({ message: "No prediction history found" });
+        }
+
+        res.json(prediction);
+    } catch (error) {
+        console.error("Error fetching prediction:", error);
+        res.status(500).json({ error: "Server error" });
+    }
 };

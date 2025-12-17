@@ -1,64 +1,117 @@
-import { Activity, AlertTriangle, Gauge, Wrench } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Activity, AlertTriangle, Wrench, ShieldCheck } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { MachineHealthChart } from "@/components/dashboard/MachineHealthChart";
 import { RecentAlertsTable } from "@/components/dashboard/RecentAlertsTable";
-import { MachineStatusGrid } from "@/components/dashboard/MachineStatusGrid";
-import { dashboardStats } from "@/data/mockData";
+import { SimulationControl } from "@/components/dashboard/SimulationControl";
+import { ChatWidget } from "@/components/chat/ChatWidget";
+import { api } from "@/lib/api";
 
 const Index = () => {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["dashboard-summary"],
+    queryFn: async () => {
+      // Backend Anda ternyata mengembalikan paket lengkap di endpoint ini
+      const response = await api.getStats();
+      console.log("Full Dashboard Data:", response); // Cek console untuk memastikan
+      return response;
+    },
+    refetchInterval: 3000, 
+  });
+
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="flex h-[80vh] items-center justify-center">
+          <div className="animate-pulse text-xl font-medium text-muted-foreground">
+            Connecting to System...
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (isError || !data) {
+    return (
+      <AppLayout>
+        <div className="flex h-[80vh] items-center justify-center flex-col gap-2">
+          <AlertTriangle className="h-10 w-10 text-destructive" />
+          <p className="text-lg text-destructive font-bold">Connection Failed</p>
+          <p className="text-sm text-muted-foreground">Check Console for details</p>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  // Fallback data jika backend mengirim null/undefined
+  const summary = data.summary || { 
+    totalMachines: 0, 
+    todaysAlerts: 0, 
+    criticalMachines: 0, 
+    systemHealth: 0 
+  };
+
+  const recentAlerts = data.recentAlerts || [];
+
   return (
     <AppLayout>
-      {/* Page Header */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-5xl font-extrabold text-foreground mb-3 tracking-tight">
+          <h1 className="text-3xl md:text-4xl font-extrabold text-foreground mb-2 tracking-tight">
             Dashboard
           </h1>
-          <p className="text-muted-foreground text-lg font-medium">
-            Monitor machine health and predictive maintenance insights
+          <p className="text-muted-foreground text-base md:text-lg font-medium">
+            Realtime Machine Monitoring
           </p>
+        </div>
+
+        <div className="flex items-center gap-4">
+           <SimulationControl />
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatsCard
           title="Total Machines"
-          value={dashboardStats.totalMachines}
+          value={summary.totalMachines}
           icon={Activity}
           variant="info"
         />
         <StatsCard
-          title="Critical Alerts"
-          value={dashboardStats.criticalAlertsCount}
+          title="Active Alerts"
+          value={summary.todaysAlerts}
           icon={AlertTriangle}
           variant="danger"
-          trend={{ value: 20, label: "from last week" }}
         />
         <StatsCard
-          title="Offline Machines"
-          value={dashboardStats.offlineMachinesCount}
+          title="Critical Status"
+          value={summary.criticalMachines}
           icon={Wrench}
-          variant="warning"
+          variant={summary.criticalMachines > 0 ? "warning" : "success"}
         />
         <StatsCard
-          title="At Risk (recent)"
-          value={dashboardStats.recentCriticalAlerts.length}
-          icon={Gauge}
-          variant="success"
+          title="System Health"
+          value={`${summary.systemHealth}%`}
+          icon={ShieldCheck}
+          variant={summary.systemHealth < 70 ? "danger" : "success"}
         />
       </div>
-
-
+      
       {/* Charts & Tables */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <MachineHealthChart />
-        <RecentAlertsTable />
+      <div className="grid lg:grid-cols-7 gap-6 mb-8">
+        <div className="lg:col-span-4">
+          <MachineHealthChart />
+        </div>
+        
+        <div className="lg:col-span-3">
+           <RecentAlertsTable data={recentAlerts} /> 
+        </div>
       </div>
 
-      {/* Machine Status Grid */}
-      <MachineStatusGrid />
+      <ChatWidget/>
     </AppLayout>
   );
 };

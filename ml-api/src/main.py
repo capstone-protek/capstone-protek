@@ -1,7 +1,7 @@
 import asyncio
 import os
 from datetime import datetime
-from typing import Any, Dict, List, Literal, Optional, Set
+from typing import Any, Dict, List, Literal, Optional
 
 import uvicorn
 from fastapi import FastAPI, HTTPException
@@ -9,46 +9,29 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, model_validator
 
 # Import komponen MLOps
-try:
-    from .db_connector import create_pool, db_pool, execute_query
-    DB_AVAILABLE = True
-except Exception as e:
-    print(f"⚠️ DB import failed: {e}. Running in demo mode.")
-    DB_AVAILABLE = False
-    db_pool = None
-    async def create_pool():
-        pass
-    async def execute_query(*args, **kwargs):
-        return []
-
+from .db_connector import create_pool, db_pool, execute_query
 from .data_loader import load_and_combine_data
 
 # Import class dari file predict.py (Asumsi: MaintenanceModel memiliki method make_prediction)
 from src.predict import MaintenanceModel
 
 # --- MLOPS SIMULATION CONFIGURATION ---
-# Waktu jeda simulasi dalam DETIK (untuk testing: L=5s, M=10s, H=15s)
-# Untuk production, ganti ke menit: {"L": 120, "M": 180, "H": 300}
-TIME_MAPPING_MINUTES = {"L": 5, "M": 10, "H": 15}  # in seconds for demo
+# Waktu jeda simulasi dalam menit (real-time)
+TIME_MAPPING_MINUTES = {"L": 2, "M": 3, "H": 5}
 
 # Status Simulasi Global
 DATA_SIMULASI: List[Dict[str, Any]] = []
 SIMULATION_TASK: Optional[asyncio.Task] = None
 SIMULATION_INDEX: int = 0
 IS_RUNNING: bool = False
-SIMULATION_TASKS: Set[asyncio.Task] = set()
 
 
 def reset_simulation_state():
-    """Reset indeks/flag simulasi dan bersihkan task sebelumnya."""
+    """Reset indeks dan flag simulasi sebelum dijalankan."""
 
-    global IS_RUNNING, SIMULATION_INDEX, SIMULATION_TASKS
+    global IS_RUNNING, SIMULATION_INDEX
     IS_RUNNING = True
     SIMULATION_INDEX = 0
-    for t in list(SIMULATION_TASKS):
-        if not t.done():
-            t.cancel()
-    SIMULATION_TASKS.clear()
 
 # --- 1. Inisialisasi App & Model ---
 app = FastAPI(title="PROTEK AI SERVICE (MLOPS SIMULATOR)", version="2.0 (Full MLOps)")
@@ -74,24 +57,7 @@ async def perform_feature_engineering(row: Dict[str, Any]):
 
 
 async def insert_sensor_row(row: Dict[str, Any]):
-    """Sisipkan data sensor mentah dan kembalikan insertion_time (atau mock jika DB unavailable)."""
-    
-    if not DB_AVAILABLE:
-        # Demo mode: return mock insertion_time
-        return datetime.now().isoformat()
-
-    # Lookup machine_id (integer) dari aset_id (string, e.g., "M-14850")
-    machine_aset_id = row.get("machine_id")  # e.g., "M-14850"
-    
-    # Query to get integer id from aset_id
-    lookup_sql = "SELECT id FROM machines WHERE aset_id = $1 LIMIT 1;"
-    lookup_records = await execute_query(lookup_sql, machine_aset_id)
-    
-    if not lookup_records:
-        print(f"⚠️ Machine {machine_aset_id} not found in database. Skipping insert.")
-        return None
-    
-    machine_id_int = lookup_records[0]["id"]  # Integer ID
+    """Sisipkan data sensor mentah dan kembalikan insertion_time."""
 
     sql_insert = """
         INSERT INTO sensor_data (machine_id, type, air_temperature_k,
@@ -100,10 +66,13 @@ async def insert_sensor_row(row: Dict[str, Any]):
         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING insertion_time;
     """
 
+    # Use machine_id string directly
+    machine_id_str = row["machine_id"]
+
     inserted_records = await execute_query(
         sql_insert,
-        machine_id_int,  # Now pass integer ID
-        row["Type"],
+        machine_id_str,  # String machine ID
+        row["Type"],  # Machine type (L, M, H)
         row["Air temperature [K]"],
         row["Process temperature [K]"],
         row["Rotational speed [rpm]"],
@@ -111,7 +80,7 @@ async def insert_sensor_row(row: Dict[str, Any]):
         row["Tool wear [min]"],
     )
 
-    return inserted_records[0]["insertion_time"] if inserted_records else datetime.now().isoformat()
+    return inserted_records[0]["insertion_time"]
 
 
 def extract_prediction_metrics(prediction_result: Dict[str, Any], fallback_row: Dict[str, Any]):
@@ -158,14 +127,15 @@ def log_prediction(machine_id: Any, risk_str: str, rul_estimate: str, rul_status
         f"Status: {rul_status} | RUL_Min: {rul_minutes:.1f}"
     )
 
-# --- FUNGSI SIMULASI PER MESIN (Background Task) ---
-async def run_simulation_loop_for_machine(machine_id: str, rows: List[Dict[str, Any]]):
-    idx = 0
-    while idx < len(rows):
-        row = rows[idx]
-        seconds = TIME_MAPPING_MINUTES.get(row.get('Type', 'L'), 5)
-        sleep_time = seconds  # Already in seconds
-
+# --- FUNGSI SIMULASI UTAMA (Background Task) ---
+async def run_simulation_loop():
+    global SIMULATION_TASK, IS_RUNNING, SIMULATION_INDEX
+    
+    while SIMULATION_INDEX < len(DATA_SIMULASI):
+        row = DATA_SIMULASI[SIMULATION_INDEX]
+        minutes = TIME_MAPPING_MINUTES.get(row['Type'], 2)
+        sleep_time = minutes * 10
+        
         try:
             # 1) Injeksi data mentah ke DB
             insertion_time = await insert_sensor_row(row)
@@ -176,9 +146,9 @@ async def run_simulation_loop_for_machine(machine_id: str, rows: List[Dict[str, 
             # 3) Prediksi (Inference)
             prediction_result = ai_engine.make_prediction(features_for_prediction)
             (
-                mid,
+                machine_id,
                 risk_str,
-                _risk_val,
+                risk_val,
                 rul_estimate,
                 rul_status,
                 rul_minutes,
@@ -204,43 +174,67 @@ async def run_simulation_loop_for_machine(machine_id: str, rows: List[Dict[str, 
                 )
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);
             """
-            if DB_AVAILABLE:
-                # Lookup machine_id (integer) dari aset_id (string)
-                lookup_sql = "SELECT id FROM machines WHERE aset_id = $1 LIMIT 1;"
-                lookup_records = await execute_query(lookup_sql, mid)
-                
-                if lookup_records:
-                    machine_id_int = lookup_records[0]["id"]
-                    await execute_query(
-                        sql_predict,
-                        machine_id_int,  # Use integer ID
-                        _risk_val,
-                        rul_estimate,
-                        rul_status,
-                        rul_minutes,
-                        status_text,
-                        failure_type,
-                        action_text,
-                        urgency_text,
-                        insertion_time,
-                    )
-                else:
-                    print(f"⚠️ Machine {mid} not found in database. Skipping prediction insert.")
+            # Use machine_id string directly
+            await execute_query(
+                sql_predict,
+                str(machine_id),  # String machine ID
+                risk_val,  # Float value, not string
+                rul_estimate,
+                rul_status,
+                rul_minutes,
+                status_text,
+                failure_type,
+                action_text,
+                urgency_text,
+                insertion_time,
+            )
 
-            # 5) Logging ringkas
-            log_prediction(mid, risk_str, rul_estimate, rul_status, rul_minutes)
+            # --- [BARU] 5) Buat Alert Otomatis Jika Critical ---
+            # Logika: Jika urgency High atau Status Critical, masukkan ke tabel alerts
+            # Ini setara dengan: if (newStatus === MachineStatus.CRITICAL)
+            
+            is_critical = (urgency_text.upper() == "HIGH") or (status_text.upper() == "CRITICAL")
+            
+            if is_critical:
+                alert_message = f"Deteksi Bahaya: {failure_type}. Tindakan: {action_text}"
+                
+                # Query Insert Alert
+                sql_alert = """
+                    INSERT INTO alerts (machine_id, message, severity, created_at)
+                    VALUES ($1, $2, $3, $4);
+                """
+                
+                # Eksekusi Query
+                await execute_query(
+                    sql_alert,
+                    str(machine_id),
+                    alert_message,
+                    "HIGH",          # Severity fixed to HIGH for critical
+                    insertion_time   # Gunakan waktu yang sama dengan data sensor
+                )
+                
+                # Optional Log untuk debug
+                print(f"   >>> [ALERT TRIGGERED] Machine: {machine_id} | Msg: {alert_message}")
+
+
+            # 6) Logging ringkas
+            log_prediction(machine_id, risk_str, rul_estimate, rul_status, rul_minutes)
 
         except asyncio.CancelledError:
-            print(f"Simulasi {machine_id} dibatalkan.")
+            print("Simulasi dibatalkan.")
             break
         except Exception as e:
-            print(f"ERROR SIMULASI [{machine_id}] idx {idx}: {e}")
+            print(f"ERROR SIMULASI di index {SIMULATION_INDEX}: {e}")
             import traceback
             traceback.print_exc()
-            break
+            break # Berhenti jika terjadi error fatal
 
-        idx += 1
+        SIMULATION_INDEX += 1
         await asyncio.sleep(sleep_time)
+
+    IS_RUNNING = False
+    SIMULATION_TASK = None
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] Simulasi Selesai. Total rows: {SIMULATION_INDEX}")
 
 
 # --- 2. Schema Data (Validasi) ---
@@ -313,43 +307,46 @@ def root():
 # --- 4. Endpoint Simulasi ---
 @app.post("/api/simulation/start")
 async def start_simulation():
-    global SIMULATION_TASKS, IS_RUNNING, SIMULATION_TASK, SIMULATION_INDEX
-
+    global SIMULATION_TASK, IS_RUNNING, SIMULATION_INDEX
+    
     if IS_RUNNING:
         raise HTTPException(status_code=400, detail="Simulasi sudah berjalan.")
 
     reset_simulation_state()
-
-    # Group data per mesin
-    from collections import defaultdict
-    grouped: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
-    for row in DATA_SIMULASI:
-        mid = str(row.get("machine_id"))
-        grouped[mid].append(row)
-
-    if not grouped:
-        raise HTTPException(status_code=500, detail="DATA_SIMULASI kosong atau tidak memiliki machine_id.")
-
-    print(f"[{datetime.now().strftime('%H:%M:%S')}] SIMULASI DIMULAI - {len(grouped)} mesin (parallel)")
-
-    # Buat task paralel untuk setiap mesin
-    for mid, rows in grouped.items():
-        t = asyncio.create_task(run_simulation_loop_for_machine(mid, rows))
-        SIMULATION_TASKS.add(t)
-
-    return {"status": "success", "message": f"Simulasi paralel dimulai untuk {len(SIMULATION_TASKS)} mesin."}
+    
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] SIMULASI DIMULAI - Creating async task")
+    
+    # Create task yang berjalan di background
+    SIMULATION_TASK = asyncio.create_task(run_simulation_loop())
+    
+    return {"status": "success", "message": "Simulasi data realtime dimulai!"}
 
 @app.get("/api/simulation/stop")
 async def stop_simulation():
-    global SIMULATION_TASKS, IS_RUNNING, SIMULATION_TASK
-    if SIMULATION_TASKS and IS_RUNNING:
-        for t in list(SIMULATION_TASKS):
-            t.cancel()
-        SIMULATION_TASKS.clear()
+    global SIMULATION_TASK, IS_RUNNING
+    if SIMULATION_TASK and IS_RUNNING:
+        SIMULATION_TASK.cancel()
         IS_RUNNING = False
         SIMULATION_TASK = None
-        return {"status": "success", "message": "Semua simulasi mesin dihentikan."}
+        return {"status": "success", "message": "Simulasi berhasil dihentikan."}
     return {"status": "error", "message": "Tidak ada simulasi yang berjalan."}
+
+@app.get("/api/simulation/status")
+async def get_simulation_status():
+    """Mendapatkan status simulasi yang sedang berjalan."""
+    total_rows = len(DATA_SIMULASI)
+    progress = 0
+    if total_rows > 0 and SIMULATION_INDEX > 0:
+        progress = (SIMULATION_INDEX / total_rows) * 100
+
+    return {
+        "is_running": IS_RUNNING,
+        "processed_rows": SIMULATION_INDEX,
+        "total_rows": total_rows,
+        "progress_percent": f"{progress:.2f}%",
+        "message": "Simulasi sedang berjalan." if IS_RUNNING else "Tidak ada simulasi yang aktif."
+    }
+
 
 # --- 5. Endpoint Prediksi Asli (untuk pengujian/penggunaan langsung) ---
 @app.post("/predict")

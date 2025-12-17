@@ -1,158 +1,119 @@
-/**
- * SYNCHRONIZED API CONTRACTS - Frontend & Backend
- * Capstone Project A25-CS050
- * Last synced: 2025-12-14
- * 
- * This is the single source of truth for all API contracts.
- * Both backend/src/types/index.ts and frontend/src/types/index.ts must match exactly.
+/*
+ * ==========================================================
+ * KONTRAK API FINAL (RAILWAY - SAFETY PATCH)
+ * ==========================================================
+ * Update: Menyesuaikan fakta bahwa beberapa field ML API
+ * bisa hilang tergantung kondisi (Normal vs Critical).
+ * ==========================================================
  */
 
 // ==========================================================
-// PREDICTION TYPES (ML Integration)
+// 1. INPUT DATA (MATCHING SWAGGER IMAGE_B2DE81)
 // ==========================================================
 
 export interface PredictPayload {
+  Machine_ID: string;   // String
+  Type: string;         // String
+  Air_Temp: number;     // Number
+  Process_Temp: number; // Number (> 0)
+  RPM: number;          // Integer (> 0)
+  Torque: number;       // Number (>= 0)
+  Tool_Wear: number;    // Integer (>= 0)
+}
+
+// ==========================================================
+// 2. OUTPUT DATA (MATCHING POSTMAN IMAGE_B2FCDF)
+// ==========================================================
+
+export interface MLResponse {
   Machine_ID: string;
-  Type: string;
-  Air_Temp: number;
-  Process_Temp: number;
-  RPM: number;
-  Torque: number;
-  Tool_Wear: number;
-}
+  
+  // Data Statistik (Selalu ada berupa String)
+  Risk_Probability: string; // "78.3%"
+  RUL_Estimate: string;     // "0 Menit Lagi"
+  RUL_Status: string;       // "🚨 CRITICAL"
+  RUL_Minutes: string;      // "0"
+  Status: string;           // "⚠️ CRITICAL FAILURE DETECTED"
 
-export interface MLPredictionResult {
-  status: string;
-  input_saved: boolean;
-  alert_created: boolean;
-  ml_result: {
-    Machine_ID: string;
-    Risk_Probability?: string;
-    RUL_Status: string;
-    Status: string;
-    Failure_Type?: string;
-    Action?: string;
-  };
+  // Field Opsional (Tergantung Normal vs Critical)
+  // Di screenshot 'Critical', Message & Recommendation TIDAK MUNCUL.
+  Message?: string;         
+  Recommendation?: string;  
+
+  // Field Tambahan saat Failure
+  Failure_Type?: string;    // "Power Failure"
+  Action?: string;          // "Cek tegangan..."
+  Urgency?: string;         // "🚨 SANGAT MENDESAK..."
 }
 
 // ==========================================================
-// DASHBOARD TYPES (Visualization)
+// 3. ENUMS & SHARED TYPES
 // ==========================================================
 
-export interface ChartDataPoint {
-  time: string;
-  val_torque: number;
-  val_rpm: number;
-  val_temp: number;
-  status: string;
-  risk: string;
-}
-
-export interface ChartHistoryResponse {
-  status: string;
-  machine_id: string;
-  data: ChartDataPoint[];
-  count: number;
-}
-
-export interface ChartLatestResponse {
-  status: string;
-  machine_id: string;
-  data: ChartDataPoint | null;
-}
-
-export interface DashboardStats {
-  totalMachines: number;
-  criticalMachines: number;
-  todaysAlerts: number;
-  systemHealth: number;
-}
-
-export interface DashboardStatsResponse {
-  status: string;
-  summary: DashboardStats;
-  timestamp: string;
-}
+export type MachineStatus = 'CRITICAL' | 'WARNING' | 'HEALTHY' | 'OFFLINE';
+export type AlertSeverity = 'CRITICAL' | 'WARNING' | 'INFO';
 
 // ==========================================================
-// ALERT TYPES
+// 4. RESPONSE DATA (FE CONSUMPTION)
 // ==========================================================
 
 export interface AlertData {
   id: number;
   message: string;
-  severity: 'CRITICAL' | 'WARNING' | 'INFO';
-  timestamp: string;
-  machine_id: number;
-  machine?: {
-    id: number;
-    aset_id: string;
+  severity: string;
+  timestamp: Date | string; 
+  machine: {
     name: string;
-    status: 'CRITICAL' | 'WARNING' | 'HEALTHY' | 'OFFLINE';
+    asetId: string;
   };
 }
 
-export interface RecentAlertsResponse {
-  status: string;
-  data: AlertData[];
-  count: number;
-}
-
-// ==========================================================
-// MACHINE TYPES
-// ==========================================================
-
-export interface Machine {
-  id: number;
-  aset_id: string;
-  name: string;
-  status: 'CRITICAL' | 'WARNING' | 'HEALTHY' | 'OFFLINE';
-  created_at: string;
-  updated_at: string;
-}
-
-export interface MachineHistoryItem {
-  machineId: string;
-  timestamp: string;
-  air_temperature_k: number;
-  rotational_speed_rpm: number;
-  torque_nm: number;
-  tool_wear_min: number;
+export interface DashboardSummaryResponse {
+  summary: {
+    totalMachines: number;
+    criticalMachines: number;
+    todaysAlerts: number;
+    systemHealth: number;
+  };
+  recentAlerts: AlertData[];
 }
 
 export interface MachineDetailResponse {
   id: number;
-  aset_id: string;
+  asetId: string;
   name: string;
-  status: 'CRITICAL' | 'WARNING' | 'HEALTHY' | 'OFFLINE';
-  created_at: string;
-  updated_at: string;
+  status: MachineStatus;
+  createdAt: string;
+  updatedAt: string;
 }
 
-// ==========================================================
-// SIMULATION TYPES
-// ==========================================================
-
-export interface SimulationStatusResponse {
-  status: string;
-  isRunning: boolean;
+export interface SensorHistoryData {
+  id: number;
+  type: string;
+  value: number;
   timestamp: string;
+  machineId: number;
 }
 
-export interface SimulationControlResponse {
-  status: string;
-  message: string;
-  isRunning: boolean;
-  timestamp: string;
+export interface SensorDataPoint {
+  id: number;
+  machine_id: number;
+  type: string;
+  air_temperature_K: number;
+  process_temperature_K: number;
+  rotational_speed_rpm: number;
+  torque_Nm: number;
+  tool_wear_min: number;
+  insertion_time: string;
 }
 
 // ==========================================================
-// API RESPONSE WRAPPER
+// 5. API RESPONSE WRAPPERS
 // ==========================================================
 
-export interface ApiResponse<T> {
+export interface PredictResponseFE {
   status: 'success' | 'error';
-  data?: T;
-  error?: string;
-  timestamp?: string;
+  input_saved: boolean;
+  ml_result: MLResponse;
+  alert_created?: boolean;
 }

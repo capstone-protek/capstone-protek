@@ -15,11 +15,14 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@langchain/core": "^1.1.5",
+    "@langchain/openai": "^1.2.0",
     "@prisma/client": "^5.22.0",
     "axios": "^1.13.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "langchain": "^1.1.5",
     "swagger-ui-express": "^5.0.1",
     "yamljs": "^0.3.0"
   },
