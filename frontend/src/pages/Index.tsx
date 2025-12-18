@@ -2,130 +2,97 @@ import { useQuery } from "@tanstack/react-query";
 import { Activity, AlertTriangle, Wrench, ShieldCheck } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { StatsCard } from "@/components/dashboard/StatsCard";
-import { MachineHealthChart } from "@/components/dashboard/MachineHealthChart";
+import { PredictionChart } from "@/components/dashboard/PredictionChart"; 
 import { RecentAlertsTable } from "@/components/dashboard/RecentAlertsTable";
-import { dashboardService } from "@/services/api";
 import SimulationControl from "@/components/dashboard/SimulationControl";
 import { ChatWidget } from "@/components/chat/ChatWidget";
-import type { DashboardSummaryResponse } from "@/types";
+import { 
+  dashboardService, 
+  type DashboardStats, 
+  type AlertsResponse,
+  type AlertData 
+} from "@/services/api";
 
 const Index = () => {
-  // 1. Fetch Data menggunakan React Query
-  const { data, isLoading, isError } = useQuery<DashboardSummaryResponse>({
-    queryKey: ["dashboard-summary"],
-    queryFn: dashboardService.getSummary,
-    refetchInterval: 5000, // Refresh otomatis setiap 5 detik (Realtime feel)
+  const statsQuery = useQuery<DashboardStats>({
+    queryKey: ["dashboard-stats"],
+    queryFn: dashboardService.getStats,
+    refetchInterval: 3000, // Refresh stat setiap 3 detik
   });
 
-  // 2. Loading State (Skeleton sederhana)
-  if (isLoading) {
-    return (
-      <AppLayout>
-        <div className="flex h-[80vh] items-center justify-center">
-          <div className="animate-pulse text-xl font-medium text-muted-foreground">
-            Loading Dashboard Data...
-          </div>
-        </div>
-      </AppLayout>
-    );
-  }
+  const alertsQuery = useQuery<AlertsResponse>({
+    queryKey: ["dashboard-alerts"],
+    queryFn: dashboardService.getRecentAlerts,
+    refetchInterval: 3000, // Refresh alert setiap 3 detik
+  });
 
-  // 3. Error State
-  if (isError || !data) {
-    return (
-      <AppLayout>
-        <div className="flex h-[80vh] items-center justify-center flex-col gap-2">
-          <AlertTriangle className="h-10 w-10 text-destructive" />
-          <p className="text-lg text-destructive font-bold">Failed to load data</p>
-          <p className="text-sm text-muted-foreground">Check your backend connection</p>
-        </div>
-      </AppLayout>
-    );
-  }
+  const stats = statsQuery.data; 
+  const alertsData: AlertData[] = alertsQuery.data?.alerts || []; 
 
-  // Destructure data agar kode lebih bersih
-  const { summary, recentAlerts } = data;
+  // Hitung persentase kesehatan sistem
+  const systemHealth = stats && stats.total > 0 
+    ? Math.round((stats.healthy / stats.total) * 100) 
+    : 0;
 
   return (
     <AppLayout>
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-        <div>
-          <h1 className="text-5xl font-extrabold text-foreground mb-3 tracking-tight">
-            Dashboard
-          </h1>
-          <p className="text-muted-foreground text-lg font-medium">
-            Monitor machine health and predictive maintenance insights
-          </p>
-        </div>
-
-        <div className="flex items-center gap-4">
-           {/* Komponen ini akan otomatis mengatur state Start/Stop */}
+       {/* Header Section dengan Title dan Simulation Control */}
+       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+           <div>
+               <h1 className="text-2xl font-bold tracking-tight text-gray-900">Dashboard Monitoring</h1>
+               <p className="text-muted-foreground">Overview kondisi mesin dan prediksi AI realtime.</p>
+           </div>
            <SimulationControl />
+       </div>
+
+      {/* Stats Cards */}
+      {stats ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <StatsCard
+            title="Total Machines"
+            value={stats.total}
+            icon={Activity}
+            variant="info"
+          />
+          <StatsCard
+            title="Unhealthy"
+            value={stats.warning + stats.critical} 
+            icon={AlertTriangle}
+            variant="danger"
+          />
+          <StatsCard
+            title="Healthy"
+            value={stats.healthy}
+            icon={Wrench}
+            variant="success"
+          />
+          <StatsCard
+            title="System Health"
+            value={`${systemHealth}%`}
+            icon={ShieldCheck} 
+            variant={systemHealth < 70 ? "danger" : "success"}
+          />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-8 animate-pulse">
+            {[1,2,3,4].map(i => <div key={i} className="h-32 bg-gray-100 rounded-xl"></div>)}
+        </div>
+      )}
+      
+      {/* Main Content Grid */}
+      <div className="grid lg:grid-cols-3 gap-8 mb-8">
+        {/* Chart mengambil 2 kolom */}
+        <div className="lg:col-span-2">
+            <PredictionChart />
         </div>
         
-        {/* Indikator Online */}
-        <div className="flex items-center gap-2 bg-green-500/10 px-3 py-1 rounded-full border border-green-500/20">
-          <span className="relative flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-          </span>
-          <span className="text-sm font-medium text-green-600 dark:text-green-400">Live Updates</span>
+        {/* Alerts Table mengambil 1 kolom */}
+        <div className="lg:col-span-1">
+            <RecentAlertsTable data={alertsData} /> 
         </div>
       </div>
 
-      {/* Stats Cards - MAPPING DATA API KE CARD */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        
-        {/* Card 1: Total Machines */}
-        <StatsCard
-          title="Total Machines"
-          value={summary.totalMachines}
-          icon={Activity}
-          variant="info"
-        />
-
-        {/* Card 2: Today's Alerts */}
-        <StatsCard
-          title="Today's Alerts"
-          value={summary.todaysAlerts}
-          icon={AlertTriangle}
-          variant="danger"
-          // Opsional: Hitung trend jika ada data historis, jika tidak hapus prop trend
-        />
-
-        {/* Card 3: Critical Machines (Ganti Offline -> Critical agar sesuai API) */}
-        <StatsCard
-          title="Critical Machines"
-          value={summary.criticalMachines}
-          icon={Wrench}
-          variant={summary.criticalMachines > 0 ? "warning" : "success"}
-        />
-
-        {/* Card 4: System Health Score */}
-        <StatsCard
-          title="System Health"
-          value={`${summary.systemHealth}%`}
-          icon={ShieldCheck} // Ganti icon Gauge ke ShieldCheck biar fresh
-          variant={summary.systemHealth < 70 ? "danger" : "success"}
-        />
-      </div>
-      
-      {/* Charts & Tables */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-7 mt-4 gap-6 mb-8">
-        {/* Note: Pastikan chart handle data kosong jika endpoint chart belum siap */}
-        <MachineHealthChart />
-      </div>
-      
-      <div className="grid mt-4 gap-6 mb-8">
-        {/* Pass data alert dari summary API ke tabel */}
-        {/* Anda mungkin perlu update komponen RecentAlertsTable agar menerima props 'data' */}
-        <RecentAlertsTable data={recentAlerts} /> 
-      </div>
-
-      <div>
-        <ChatWidget/>
-      </div>
+      <ChatWidget/>
     </AppLayout>
   );
 };

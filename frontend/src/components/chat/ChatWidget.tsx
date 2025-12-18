@@ -3,12 +3,23 @@ import { useChat } from "@/context/ChatContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { MessageSquare, X, Send, Bot, Loader2, Trash2 } from "lucide-react";
+import { MessageSquare, X, Send, BrainCog, Loader2, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from 'react-markdown';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export function ChatWidget() {
-  const { messages, isLoading, sendMessage, clearHistory } = useChat();
+  const { messages, isLoading, sendMessage } = useChat();
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -31,18 +42,47 @@ export function ChatWidget() {
         <Card className="w-[350px] h-[500px] shadow-2xl border-primary/20 flex flex-col animate-in slide-in-from-bottom-10 fade-in duration-300">
           <CardHeader className="bg-primary text-primary-foreground p-4 rounded-t-lg flex flex-row items-center justify-between space-y-0">
             <div className="flex items-center gap-2">
-              <div className="bg-white/20 p-1.5 rounded-full">
-                <Bot className="w-5 h-5" />
+              <div className="bg-white/24 p-1.5 rounded-full flex items-center justify-center text-primary-foreground">
+                <BrainCog className="w-5 h-5" />
               </div>
               <div>
-                <CardTitle className="text-sm font-bold">Protek Copilot</CardTitle>
+                <CardTitle className="text-2xl font-bold bg-transparent text-primary-foreground ">Protek Copilot</CardTitle>
                 <p className="text-xs opacity-80">AI Maintenance Assistant</p>
               </div>
             </div>
             <div className="flex gap-1">
-                <Button variant="ghost" size="icon" className="hover:bg-white/20 h-8 w-8 text-primary-foreground" onClick={clearHistory}>
-                  <Trash2 className="w-4 h-4" />
+                            {/* 3. BUNGKUS TOMBOL DELETE DENGAN ALERT DIALOG */}
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  size="icon" 
+                  disabled={messages.length === 0 || isLoading}
+                  className="text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                >
+                    <Trash2 className="w-5 h-5" />
                 </Button>
+              </AlertDialogTrigger>
+              
+              {/* ISI MODAL KONFIRMASI (YANG MENGGANTIKAN POPUP BROWSER) */}
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Hapus semua percakapan?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Tindakan ini tidak dapat dibatalkan. Semua riwayat chat Anda dengan Protek Copilot akan dihapus permanen.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Batal</AlertDialogCancel>
+                  {/* Klik tombol ini baru menjalankan fungsi hapus */}
+                  <AlertDialogAction onClick={() => setIsOpen(false)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Ya, Hapus
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            
                 <Button variant="ghost" size="icon" className="hover:bg-white/20 h-8 w-8 text-primary-foreground" onClick={() => setIsOpen(false)}>
                   <X className="w-5 h-5" />
                 </Button>

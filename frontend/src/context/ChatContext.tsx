@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import  { createContext, useContext, useState, useEffect } from 'react';
 import  type { ReactNode } from 'react';
-import { dashboardService } from "@/services/api";
+import { chatService } from "@/services/api";
 
 // Tipe Data Message
 export interface Message {
@@ -58,7 +58,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
     try {
       // 2. Panggil API Backend
-      const data = await dashboardService.sendMessage(input);
+      const data = await chatService.sendMessage(input);
       
       const botMsg: Message = {
         id: (Date.now() + 1).toString(),

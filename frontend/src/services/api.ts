@@ -1,95 +1,220 @@
 import axios from "axios";
 
-// --- INTERFACES (Definisi Tipe Data) ---
+// ==========================================================
+// 1. DASHBOARD TYPES
+// ==========================================================
 
-// 1. Definisikan bentuk Alert agar tidak perlu pakai 'any'
-export interface Alert {
+export interface DashboardStats {
+  total: number;
+  healthy: number;
+  warning: number;
+  critical: number;
+  offline: number;
+}
+
+// ==========================================================
+// 2. ALERT TYPES
+// ==========================================================
+
+export interface AlertData {
   id: number;
   message: string;
-  severity: "CRITICAL" | "WARNING" | "INFO" | string;
+  severity: "HIGH" | "MEDIUM" | "LOW" | "CRITICAL" | "WARNING" | string;
   timestamp: string;
+  machine_id: string; // String sesuai database
   machine?: {
     name: string;
-    asetId?: string;
+    machine_id: string;
   };
 }
 
-export interface DashboardSummaryResponse {
-  summary: {
-    totalMachines: number;
-    todaysAlerts: number;
-    criticalMachines: number;
-    systemHealth: number;
-  };
-  // ✅ FIX: Ganti 'any[]' dengan 'Alert[]'
-  recentAlerts: Alert[]; 
+export interface AlertsResponse {
+  alerts: AlertData[];
+}
+
+// ==========================================================
+// 3. MACHINE TYPES
+// ==========================================================
+
+export interface MachineListItem {
+  id: number;
+  machine_id: string;
+  name: string;
+  status: string;
+}
+
+// Tipe data untuk Detail Mesin
+export interface MachineDetailData {
+  id: number;
+  machine_id: string;
+  name: string;
+  status: string;
+  created_at: string;
+  sensor_data: Array<{
+    air_temperature_k: number;
+    process_temperature_k: number;
+    rotational_speed_rpm: number;
+    torque_nm: number;
+    tool_wear_min: number;
+    insertion_time: string;
+  }>;
+  alerts: Array<{
+    id: number;
+    message: string;
+    severity: string;
+    timestamp: string;
+  }>;
+}
+
+// ==========================================================
+// 4. HISTORY & PREDICTION TYPES
+// ==========================================================
+
+export interface HistoryItem {
+  id: number;
+  timestamp: string;
+  air_temperature_k: number;
+  process_temperature_k: number;
+  rotational_speed_rpm: number;
+  torque_nm: number;
+  tool_wear_min: number;
+  type: string;
+}
+
+export interface PredictionItem {
+  id: number;
+  prediction_time: string;
+  risk_probability: number;
+  rul_minutes_val: number;
+}
+
+// Return type bersih untuk dikonsumsi UI
+export interface MachineHistoryResponse {
+  sensor: HistoryItem[];
+  prediction: PredictionItem[];
+}
+
+// Tipe RAW untuk menangani respon backend yang mungkin Array atau Object
+// Ini pengganti 'any' yang aman
+type RawHistoryResponse = 
+  | HistoryItem[] 
+  | { sensor?: HistoryItem[]; prediction?: PredictionItem[] };
+
+// ==========================================================
+// 5. SIMULATION TYPES
+// ==========================================================
+
+// Tipe RAW untuk menangani variasi case snake/camel dari backend
+interface RawSimulationResponse {
+  is_running?: boolean; // snake_case
+  isRunning?: boolean;  // camelCase
+  status?: string;
+  message?: string;
+}
+
+export interface SimulationStatusResponse {
+  is_running: boolean;
+  message?: string;
 }
 
 export interface ChatResponse {
   reply: string;
 }
 
-// --- CONFIG ---
-const API_URL = "https://capstone-protek-production-cabc.up.railway.app/api";
+// ==========================================================
+// CONFIG
+// ==========================================================
+
+const API_URL = "http://localhost:4000/api";
 
 const api = axios.create({
   baseURL: API_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
-  timeout: 15000,
+  headers: { "Content-Type": "application/json" },
+  timeout: 10000,
 });
 
-// --- SERVICES ---
+// ==========================================================
+// SERVICES
+// ==========================================================
+
 export const dashboardService = {
-  // Get Dashboard Summary
-  getSummary: async () => {
-    try {
-      const response = await api.get<DashboardSummaryResponse>("/dashboard/summary");
-      return response.data;
-    } catch (error) {
-      console.error("API Error [Summary]:", error);
-      throw error;
-    }
+  getStats: async (): Promise<DashboardStats> => {
+    const response = await api.get<DashboardStats>("/dashboard/stats");
+    return response.data;
   },
 
-  // Get Machine History (Chart)
-  // Gunakan unknown[] atau interface spesifik jika ada, hindari any[]
-  getHistory: async (asetId: string) => {
-    try {
-      const response = await api.get(`/machines/${asetId}/history`);
-      return response.data;
-    } catch (error) {
-      console.error("API Error [History]:", error);
-      return []; 
-    }
+  getRecentAlerts: async (): Promise<AlertsResponse> => {
+    const response = await api.get<AlertsResponse>("/alerts");
+    return response.data;
   },
 
-  // Chatbot
-  sendMessage: async (message: string) => {
-    try {
-      const response = await api.post<ChatResponse>("/chat", { message });
-      return response.data;
-    } catch (error) {
-      console.error("API Error [Chat]:", error);
-      throw error;
+  getMachinesList: async (): Promise<MachineListItem[]> => {
+    const response = await api.get<MachineListItem[]>("/dashboard/machines");
+    return response.data;
+  },
+
+  getMachineHistory: async (machineId: string): Promise<HistoryItem[]> => {
+    // Fungsi legacy untuk chart lama (hanya sensor)
+    // Kita cast ke HistoryItem[] karena endpoint ini spesifik
+    const response = await api.get<HistoryItem[]>(`/machines/${machineId}/history`);
+    return response.data;
+  }
+};
+
+export const machineService = {
+  getDetail: async (machineId: string): Promise<MachineDetailData> => {
+    const response = await api.get<MachineDetailData>(`/machines/${machineId}`);
+    return response.data;
+  },
+
+  // Adapter AMAN tanpa 'any'
+  getHistory: async (machineId: string): Promise<MachineHistoryResponse> => {
+    // Kita minta tipe RawHistoryResponse (Union Type)
+    const response = await api.get<RawHistoryResponse>(`/machines/${machineId}/history`);
+    const data = response.data;
+
+    // Type Guard: TypeScript cek apakah ini Array
+    if (Array.isArray(data)) {
+      return {
+        sensor: data,       
+        prediction: []       
+      };
     }
+
+    // Jika bukan array, TypeScript otomatis tahu ini adalah Object {sensor?, prediction?}
+    return {
+      sensor: data.sensor || [],
+      prediction: data.prediction || []
+    };
   }
 };
 
 export const simulationService = {
-  // Simulation Status
-  getStatus: async () => {
+  getStatus: async (): Promise<SimulationStatusResponse> => {
     try {
-      const response = await api.get("/simulation/status");
-      return response.data;
+      // Kita minta tipe RawSimulationResponse yang sudah didefinisikan strukturnya
+      const response = await api.get<RawSimulationResponse>("/simulation/status");
+      const data = response.data;
+      
+      return { 
+        // Menggunakan Nullish Coalescing Operator (??) untuk fallback aman
+        is_running: data.is_running ?? data.isRunning ?? false,
+        message: data.message
+      };
     } catch {
       return { is_running: false };
     }
   },
   
   start: async () => api.post("/simulation/start"),
-  stop: async () => api.get("/simulation/stop"),
+  stop: async () => api.post("/simulation/stop"),
+};
+
+export const chatService = {
+  sendMessage: async (message: string): Promise<ChatResponse> => {
+    const response = await api.post<ChatResponse>("/chat", { message });
+    return response.data;
+  }
 };
 
 export default api;

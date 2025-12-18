@@ -18,21 +18,20 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import type { AlertData } from "@/types";
 import { cn } from "@/lib/utils";
-import { dashboardService } from "@/services/api";
-import { mockAlerts } from "@/data/mockData";
+// ✅ FIX: Import dari api.ts
+import { dashboardService, type AlertData } from "@/services/api";
 
 const severityStyles: Record<string, string> = {
-  CRITICAL: "bg-destructive/10 text-destructive border-destructive/20",
-  WARNING: "bg-warning/10 text-warning border-warning/20",
-  INFO: "bg-info/10 text-info border-info/20",
+  CRITICAL: "bg-red-100 text-red-600 border-red-200",
+  WARNING: "bg-yellow-100 text-yellow-600 border-yellow-200",
+  INFO: "bg-blue-100 text-blue-600 border-blue-200",
 };
 
 const severityOrder = ["CRITICAL", "WARNING", "INFO"];
 
 function formatDate(timestamp: string): string {
-  return new Date(timestamp).toLocaleString("en-US", {
+  return new Date(timestamp).toLocaleString("id-ID", {
     month: "short",
     day: "numeric",
     hour: "2-digit",
@@ -49,31 +48,32 @@ export function AlertList() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Try to fetch from API, fallback to mock data
+    setLoading(true);
     dashboardService
-      .getAlerts()
+      .getRecentAlerts()
       .then((data) => {
-        // Backend mengembalikan { alerts: [...] } atau array langsung
-        const alertsArray = Array.isArray(data) 
-          ? data 
-          : (data as data)?.alerts || [];
+        // ✅ FIX: Backend return { alerts: [...] }
+        const alertsArray = data?.alerts || [];
         setAlerts(alertsArray);
       })
-      .catch((error) => {
-        console.error("Error fetching alerts:", error);
-        console.log("Using mock data");
-        // Convert mock data to AlertData format if needed
-        setAlerts(mockAlerts as AlertData[]);
+      .catch((err) => {
+        console.error("Error fetching alerts:", err);
+        setAlerts([]); // Set empty on error
       })
       .finally(() => setLoading(false));
   }, []);
 
   const filteredAlerts = alerts
     .filter((alert) => {
+      // ✅ FIX: Gunakan machine_id dan optional chaining
+      const machineName = alert.machine?.name || "";
+      const machineId = alert.machine_id || "";
+      const message = alert.message || "";
+
       const matchesSearch =
-        alert.machine.asetId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        alert.message.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        alert.machine.name.toLowerCase().includes(searchQuery.toLowerCase());
+        machineId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        message.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        machineName.toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchesSeverity =
         severityFilter === "all" || alert.severity === severityFilter;
@@ -86,23 +86,24 @@ export function AlertList() {
           severityOrder.indexOf(a.severity) - severityOrder.indexOf(b.severity)
         );
       }
+      // Sort by Time
       return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
     });
 
   if (loading) {
-    return <div className="p-4">Loading alerts...</div>;
+    return <div className="p-8 text-center text-muted-foreground">Loading alerts...</div>;
   }
 
   return (
     <div className="space-y-6">
       {/* Filters */}
-      <Card className="shadow-lg border-2 hover:shadow-xl transition-all">
+      <Card className="shadow-sm border">
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search alerts..."
+                placeholder="Search alerts (ID, Name, Message)..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
@@ -143,17 +144,17 @@ export function AlertList() {
       </Card>
 
       {/* Alert List */}
-      <Card className="shadow-lg border-2 hover:shadow-xl transition-all">
+      <Card className="shadow-sm border">
         <CardHeader className="pb-3 border-b">
           <CardTitle className="text-xl font-bold">
-            Active Alerts ({filteredAlerts.length})
+            Active Alerts ( {filteredAlerts.length} )
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <div className="divide-y divide-border">
             {filteredAlerts.length === 0 ? (
-              <div className="p-4 text-center text-muted-foreground">
-                No alerts found
+              <div className="p-8 text-center text-muted-foreground">
+                No alerts found matching your criteria.
               </div>
             ) : (
               filteredAlerts.map((alert) => (
@@ -167,23 +168,23 @@ export function AlertList() {
                         <span
                           className={cn(
                             "px-2 py-1 rounded-md text-xs font-semibold border capitalize",
-                            severityStyles[alert.severity] || "bg-muted text-muted-foreground border-border"
+                            severityStyles[alert.severity] || "bg-gray-100 text-gray-600 border-gray-200"
                           )}
                         >
                           {alert.severity}
                         </span>
                         <span className="text-sm text-muted-foreground">
-                          {formatDate(alert.timestamp.toString())}
+                          {formatDate(alert.timestamp)}
                         </span>
                       </div>
                       <h4 className="font-semibold text-foreground">
                         {alert.message}
                       </h4>
                       <Link
-                        to={`/machine/${alert.machine.asetId}`}
-                        className="text-sm text-primary hover:underline"
+                        to={`/machines/${alert.machine_id}`} // ✅ FIX: Link ke route machines
+                        className="text-sm text-primary hover:underline flex items-center gap-1 mt-1"
                       >
-                        Machine: {alert.machine.name} ({alert.machine.asetId})
+                        Machine: {alert.machine?.name || "Unknown"} ({alert.machine_id})
                       </Link>
                     </div>
                     <Button
@@ -206,9 +207,9 @@ export function AlertList() {
       <Dialog open={!!selectedAlert} onOpenChange={() => setSelectedAlert(null)}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>{selectedAlert?.message}</DialogTitle>
+            <DialogTitle>Alert Details</DialogTitle>
             <DialogDescription>
-              {selectedAlert?.machine.name} ({selectedAlert?.machine.asetId})
+              Machine: {selectedAlert?.machine?.name || "Unknown"} ({selectedAlert?.machine_id})
             </DialogDescription>
           </DialogHeader>
           {selectedAlert && (
@@ -238,18 +239,15 @@ export function AlertList() {
                   Timestamp
                 </h5>
                 <p className="text-sm text-muted-foreground">
-                  {formatDate(selectedAlert.timestamp.toString())}
+                  {formatDate(selectedAlert.timestamp)}
                 </p>
               </div>
 
               <div className="flex gap-2 pt-4">
                 <Button className="flex-1" asChild>
-                  <Link to={`/machine/${selectedAlert.machine.asetId}`}>
+                  <Link to={`/machines/${selectedAlert.machine_id}`}>
                     View Machine
                   </Link>
-                </Button>
-                <Button variant="outline" className="flex-1">
-                  Create Ticket
                 </Button>
               </div>
             </div>

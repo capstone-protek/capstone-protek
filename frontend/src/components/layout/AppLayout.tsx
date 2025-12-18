@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Sidebar } from "./Sidebar";
-import { Header } from "./Header";
 import { cn } from "@/lib/utils";
+import { Header } from "./Header";
 
 interface AppLayoutProps {
   children: React.ReactNode;

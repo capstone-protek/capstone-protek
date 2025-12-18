@@ -62,7 +62,7 @@ class ChatbotService {
     } catch (error) {
         console.error("LLM Error:", error);
         return {
-            reply: "Maaf, saat ini saya mengalami kendala koneksi ke otak AI. Mohon coba lagi nanti.",
+            reply: "Maaf, saat ini saya mengalami kendala koneksi ke pusat AI. Mohon coba lagi nanti.",
             error: true
         };
     }

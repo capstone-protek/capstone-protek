@@ -18,7 +18,7 @@ export function Header() {
     if (path === "/settings") return "Settings";
     if (path === "/machines") return "Machine Monitoring";
     if (path === "/alerts") return "System Alerts";
-    if (path === "/chat") return "AI Copilot";
+    if (path === "/chat") return "PROTEK Copilot";
     if (path === "/integration") return "Integration";
 
     // Cek halaman detail (misal: /machine/123)

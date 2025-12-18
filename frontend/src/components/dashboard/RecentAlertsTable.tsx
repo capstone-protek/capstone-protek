@@ -1,32 +1,26 @@
-import type { AlertData } from "@/types";
+import type { AlertData } from "@/services/api"; // Make sure to import from your API definition which has the correct type
 import { AlertTriangle, AlertOctagon, Info, CheckCircle2 } from "lucide-react";
 
-// Update Interface: Terima kemungkinan data berupa Array ATAU Object Wrapper
 interface RecentAlertsTableProps {
   data?: AlertData[] | { alerts: AlertData[] } | null;
 }
 
 export const RecentAlertsTable = ({ data }: RecentAlertsTableProps) => {
   
-  // --- 1. NORMALISASI DATA (Type-Safe) ---
-  // Kita tentukan alertsList sebagai Array kosong dulu
   let alertsList: AlertData[] = [];
 
   if (data) {
     if (Array.isArray(data)) {
-      // Jika data langsung Array, pakai
       alertsList = data;
     } else if ('alerts' in data && Array.isArray(data.alerts)) {
-      // Jika data berbentuk Object { alerts: [...] }, ambil properti alerts
-      // 'in' operator aman digunakan tanpa 'any'
       alertsList = data.alerts;
     }
   }
 
-  // --- 2. Helper Severity ---
   const getSeverityBadge = (severity: string) => {
     switch (severity) {
       case "CRITICAL":
+      case "HIGH": // Handle HIGH as CRITICAL for badge color
         return (
           <div className="flex items-center gap-2 text-red-600 bg-red-100 dark:bg-red-900/30 dark:text-red-400 px-2 py-1 rounded-full w-fit">
             <AlertOctagon className="h-4 w-4" />
@@ -34,6 +28,7 @@ export const RecentAlertsTable = ({ data }: RecentAlertsTableProps) => {
           </div>
         );
       case "WARNING":
+      case "MEDIUM":
         return (
           <div className="flex items-center gap-2 text-yellow-600 bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-400 px-2 py-1 rounded-full w-fit">
             <AlertTriangle className="h-4 w-4" />
@@ -41,6 +36,7 @@ export const RecentAlertsTable = ({ data }: RecentAlertsTableProps) => {
           </div>
         );
       case "INFO":
+      case "LOW":
         return (
           <div className="flex items-center gap-2 text-blue-600 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-1 rounded-full w-fit">
             <Info className="h-4 w-4" />
@@ -74,7 +70,6 @@ export const RecentAlertsTable = ({ data }: RecentAlertsTableProps) => {
           {alertsList.length} Total
         </span>
       </div>
-
       <div className="p-0 overflow-x-auto">
         {alertsList.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 text-center">
@@ -105,10 +100,10 @@ export const RecentAlertsTable = ({ data }: RecentAlertsTableProps) => {
                   </td>
                   <td className="px-6 py-4 font-medium text-foreground">
                     <div>
-                      {/* Optional Chaining untuk keamanan extra */}
                       {alert.machine?.name || "Unknown"}
                       <div className="text-xs text-muted-foreground mt-0.5">
-                        {alert.machine?.asetId || "-"}
+                        {/* FIX: Use machine_id instead of asetId */}
+                        {alert.machine?.machine_id || alert.machine_id || "-"}
                       </div>
                     </div>
                   </td>
