@@ -122,3 +122,32 @@ export const getLatestPrediction = async (req: Request, res: Response) => {
         res.status(500).json({ error: "Server error" });
     }
 };
+
+export const getPredictionHistory = async (req: Request, res: Response) => {
+    const { machineId } = req.params;
+
+    try {
+        const history = await prisma.prediction_results.findMany({
+            where: {
+                machine_id: String(machineId)
+            },
+            // Urutkan dari yang paling baru
+            orderBy: {
+                prediction_time: 'desc'
+            },
+            // Ambil 20 saja agar grafik tidak terlalu padat
+            take: 20
+        });
+
+        // Format return harus sesuai dengan yang diharapkan Frontend
+        // Frontend: history.prediction.map(...)
+        res.json({
+            machine_id: machineId,
+            prediction: history 
+        });
+
+    } catch (error) {
+        console.error("Error fetching prediction history:", error);
+        res.status(500).json({ error: "Server error fetching history" });
+    }
+};

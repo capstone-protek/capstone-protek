@@ -30,7 +30,7 @@ export function PredictionChart() {
   const { data: history, isLoading } = useQuery<MachineHistoryResponse>({
     queryKey: ["machine-history", selectedMachine],
     // ✅ FIX 2: Gunakan machineService.getHistory (Endpoint yang benar)
-    queryFn: () => machineService.getHistory(selectedMachine),
+    queryFn: () => machineService.getPredictionHistory(selectedMachine),
     refetchInterval: 3000,
     enabled: !!selectedMachine,
   });

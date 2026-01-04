@@ -29,8 +29,8 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { 
   machineService, 
-  type MachineHistoryResponse, 
-  type MachineDetailData // Import tipe ini dari api.ts
+  type HistoryItem, // ✅ FIX: Pastikan ini diimport
+  type MachineDetailData 
 } from "@/services/api";
 import { cn } from "@/lib/utils";
 
@@ -56,9 +56,10 @@ export function MachineDetail() {
   });
 
   // 3. Fetch History untuk Grafik
-  const { data: historyData, isLoading: loadingHistory } = useQuery<MachineHistoryResponse>({
-    queryKey: ['machine-history', machineId],
-    queryFn: () => machineService.getHistory(machineId),
+  // ✅ FIX: Gunakan tipe HistoryItem[] (Array), bukan MachineHistoryResponse (Object)
+  const { data: historyData, isLoading: loadingHistory } = useQuery<HistoryItem[]>({
+    queryKey: ['machine-sensor-history', machineId],
+    queryFn: () => machineService.getSensorHistory(machineId),
     enabled: !!machineId,
     refetchInterval: 5000,
   });
@@ -111,10 +112,9 @@ export function MachineDetail() {
     : null;
 
   // C. Chart Data Mapping (Dari endpoint history)
-  // Backend mengirim array object (snake_case), kita map untuk Recharts
-  // Kita reverse array agar grafik berjalan dari kiri (lama) ke kanan (baru) jika backend kirim DESC
-  const chartData = historyData?.sensor 
-    ? [...historyData.sensor].reverse().map(s => ({
+  // ✅ FIX: historyData sekarang sudah berupa Array, tidak perlu akses properti .sensor
+  const chartData = historyData 
+    ? [...historyData].reverse().map(s => ({
         time: new Date(s.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute:'2-digit' }),
         temp: s.air_temperature_k,
         process: s.process_temperature_k,
@@ -177,7 +177,6 @@ export function MachineDetail() {
               <div className="col-span-2">
                 <p className="text-muted-foreground text-xs uppercase tracking-wider mb-1">Last Prediction</p>
                 <p className="font-medium truncate">
-                  {/* Contoh placeholder, bisa diganti data real jika ada */}
                   Normal Operation
                 </p>
               </div>
@@ -207,11 +206,11 @@ export function MachineDetail() {
         <div className="lg:col-span-2 grid grid-cols-2 md:grid-cols-3 gap-4">
            {latestReading ? (
              <>
-                <MetricCard label="Air Temp" value={latestReading.air_temperature_k} unit="K" color="text-blue-600 dark:text-blue-400" />
-                <MetricCard label="Process Temp" value={latestReading.process_temperature_k} unit="K" color="text-orange-600 dark:text-orange-400" />
-                <MetricCard label="Rotational Speed" value={latestReading.rotational_speed_rpm} unit="RPM" color="text-purple-600 dark:text-purple-400" />
-                <MetricCard label="Torque" value={latestReading.torque_nm} unit="Nm" color="text-yellow-600 dark:text-yellow-400" />
-                <MetricCard label="Tool Wear" value={latestReading.tool_wear_min} unit="min" color="text-slate-600 dark:text-slate-400" />
+               <MetricCard label="Air Temp" value={latestReading.air_temperature_k} unit="K" color="text-blue-600 dark:text-blue-400" />
+               <MetricCard label="Process Temp" value={latestReading.process_temperature_k} unit="K" color="text-orange-600 dark:text-orange-400" />
+               <MetricCard label="Rotational Speed" value={latestReading.rotational_speed_rpm} unit="RPM" color="text-purple-600 dark:text-purple-400" />
+               <MetricCard label="Torque" value={latestReading.torque_nm} unit="Nm" color="text-yellow-600 dark:text-yellow-400" />
+               <MetricCard label="Tool Wear" value={latestReading.tool_wear_min} unit="min" color="text-slate-600 dark:text-slate-400" />
              </>
            ) : (
              <div className="col-span-full h-40 flex flex-col items-center justify-center border-2 border-dashed rounded-xl bg-muted/10 text-muted-foreground">
@@ -230,7 +229,6 @@ export function MachineDetail() {
               <CardTitle className="text-lg">Sensor Telemetry History</CardTitle>
               <CardDescription>Real-time monitoring of Air Temp, Process Temp, Torque, and RPM.</CardDescription>
             </div>
-            {/* Legend Custom (Optional) */}
             <div className="hidden md:flex gap-4 text-xs font-medium">
                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500"></span> Air Temp</span>
                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-500"></span> Process Temp</span>

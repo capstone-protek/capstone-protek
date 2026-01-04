@@ -21,7 +21,7 @@ export interface AlertData {
   message: string;
   severity: "HIGH" | "MEDIUM" | "LOW" | "CRITICAL" | "WARNING" | string;
   timestamp: string;
-  machine_id: string; // String sesuai database
+  machine_id: string;
   machine?: {
     name: string;
     machine_id: string;
@@ -43,7 +43,6 @@ export interface MachineListItem {
   status: string;
 }
 
-// Tipe data untuk Detail Mesin
 export interface MachineDetailData {
   id: number;
   machine_id: string;
@@ -72,7 +71,7 @@ export interface MachineDetailData {
 
 export interface HistoryItem {
   id: number;
-  timestamp: string;
+  timestamp: string; // Bisa string ISO dari backend
   air_temperature_k: number;
   process_temperature_k: number;
   rotational_speed_rpm: number;
@@ -88,23 +87,15 @@ export interface PredictionItem {
   rul_minutes_val: number;
 }
 
-// Return type bersih untuk dikonsumsi UI
 export interface MachineHistoryResponse {
   sensor: HistoryItem[];
   prediction: PredictionItem[];
 }
 
-// Tipe RAW untuk menangani respon backend yang mungkin Array atau Object
-// Ini pengganti 'any' yang aman
-type RawHistoryResponse = 
-  | HistoryItem[] 
-  | { sensor?: HistoryItem[]; prediction?: PredictionItem[] };
-
 // ==========================================================
 // 5. SIMULATION TYPES
 // ==========================================================
 
-// Tipe RAW untuk menangani variasi case snake/camel dari backend
 interface RawSimulationResponse {
   is_running?: boolean; // snake_case
   isRunning?: boolean;  // camelCase
@@ -152,13 +143,6 @@ export const dashboardService = {
     const response = await api.get<MachineListItem[]>("/dashboard/machines");
     return response.data;
   },
-
-  getMachineHistory: async (machineId: string): Promise<HistoryItem[]> => {
-    // Fungsi legacy untuk chart lama (hanya sensor)
-    // Kita cast ke HistoryItem[] karena endpoint ini spesifik
-    const response = await api.get<HistoryItem[]>(`/machines/${machineId}/history`);
-    return response.data;
-  }
 };
 
 export const machineService = {
@@ -167,37 +151,29 @@ export const machineService = {
     return response.data;
   },
 
-  // Adapter AMAN tanpa 'any'
-  getHistory: async (machineId: string): Promise<MachineHistoryResponse> => {
-    // Kita minta tipe RawHistoryResponse (Union Type)
-    const response = await api.get<RawHistoryResponse>(`/machines/${machineId}/history`);
-    const data = response.data;
+  // ✅ KHUSUS SENSOR (Return Array langsung)
+  getSensorHistory: async (machineId: string): Promise<HistoryItem[]> => {
+    const response = await api.get<HistoryItem[]>(`/machines/${machineId}/history`);
+    return response.data;
+  },
 
-    // Type Guard: TypeScript cek apakah ini Array
-    if (Array.isArray(data)) {
-      return {
-        sensor: data,       
-        prediction: []       
-      };
-    }
-
-    // Jika bukan array, TypeScript otomatis tahu ini adalah Object {sensor?, prediction?}
+  // ✅ KHUSUS PREDIKSI (Return Object { prediction: [...] })
+  getPredictionHistory: async (id: string): Promise<MachineHistoryResponse> => {
+    const response = await api.get<{ prediction: PredictionItem[] }>(`/predict/history/${id}`);
     return {
-      sensor: data.sensor || [],
-      prediction: data.prediction || []
+        sensor: [], 
+        prediction: response.data.prediction || [] 
     };
-  }
+  },
 };
 
 export const simulationService = {
   getStatus: async (): Promise<SimulationStatusResponse> => {
     try {
-      // Kita minta tipe RawSimulationResponse yang sudah didefinisikan strukturnya
       const response = await api.get<RawSimulationResponse>("/simulation/status");
       const data = response.data;
       
       return { 
-        // Menggunakan Nullish Coalescing Operator (??) untuk fallback aman
         is_running: data.is_running ?? data.isRunning ?? false,
         message: data.message
       };
