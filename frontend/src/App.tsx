@@ -21,21 +21,18 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <ChatProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/integration" element={<Integration />} />
-            <Route path="/machines" element={<Machines />} />
-            <Route path="/alerts" element={<Alerts />} />
-            <Route path="/chat" element={<Chat />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/machine/:id" element={<MachineDetailPage />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </ChatProvider>
-
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Index />} />
+          <Route path="/integration" element={<Integration />} />
+          <Route path="/machines" element={<Machines />} />
+          <Route path="/alerts" element={<Alerts />} />
+          <Route path="/chat" element={<Chat />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/machine/:asetId" element={<MachineDetailPage />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
 );

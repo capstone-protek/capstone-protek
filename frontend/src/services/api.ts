@@ -1,194 +1,136 @@
+// frontend/src/services/api.ts
 import axios from "axios";
+import type { 
+  DashboardSummaryResponse, 
+  MachineDetailResponse, 
+  SensorHistoryData,
+  AlertData,
+  PredictPayload,
+  PredictResponseFE
+} from "../types";
 
-// ==========================================================
-// 1. DASHBOARD TYPES
-// ==========================================================
+// Gunakan URL Railway Anda jika di production, atau localhost saat dev
+const API_URL = import.meta.env.VITE_API_URL || "https://api-protek-production.up.railway.app/api";
 
-export interface DashboardStats {
-  total: number;
-  healthy: number;
-  warning: number;
-  critical: number;
-  offline: number;
-}
+const api = axios.create({
+  baseURL: API_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
 
-// ==========================================================
-// 2. ALERT TYPES
-// ==========================================================
+// --- INTERFACES (Di-export agar bisa dipakai di Komponen) ---
 
-export interface AlertData {
-  id: number;
+export interface SimulationResponse {
+  status: "success" | "error";
   message: string;
-  severity: "HIGH" | "MEDIUM" | "LOW" | "CRITICAL" | "WARNING" | string;
-  timestamp: string;
-  machine_id: string;
-  machine?: {
-    name: string;
-    machine_id: string;
-  };
+  is_running?: boolean;
 }
 
-export interface AlertsResponse {
-  alerts: AlertData[];
+export interface TrendDataPoint {
+  time: string;
+  healthScore: number;
+  machineId: string;
 }
 
-// ==========================================================
-// 3. MACHINE TYPES
-// ==========================================================
-
-export interface MachineListItem {
-  id: number;
-  machine_id: string;
-  name: string;
-  status: string;
-}
-
-export interface MachineDetailData {
-  id: number;
-  machine_id: string;
-  name: string;
-  status: string;
-  created_at: string;
-  sensor_data: Array<{
-    air_temperature_k: number;
-    process_temperature_k: number;
-    rotational_speed_rpm: number;
-    torque_nm: number;
-    tool_wear_min: number;
-    insertion_time: string;
-  }>;
-  alerts: Array<{
-    id: number;
-    message: string;
-    severity: string;
-    timestamp: string;
-  }>;
-}
-
-// ==========================================================
-// 4. HISTORY & PREDICTION TYPES
-// ==========================================================
-
-export interface HistoryItem {
-  id: number;
-  timestamp: string; // Bisa string ISO dari backend
-  air_temperature_k: number;
-  process_temperature_k: number;
-  rotational_speed_rpm: number;
-  torque_nm: number;
-  tool_wear_min: number;
-  type: string;
-}
-
-export interface PredictionItem {
-  id: number;
-  prediction_time: string;
-  risk_probability: number;
-  rul_minutes_val: number;
-}
-
-export interface MachineHistoryResponse {
-  sensor: HistoryItem[];
-  prediction: PredictionItem[];
-}
-
-// ==========================================================
-// 5. SIMULATION TYPES
-// ==========================================================
-
-interface RawSimulationResponse {
-  is_running?: boolean; // snake_case
-  isRunning?: boolean;  // camelCase
-  status?: string;
-  message?: string;
-}
-
-export interface SimulationStatusResponse {
-  is_running: boolean;
-  message?: string;
+export interface DebugMatchItem {
+  mesin: string;
+  kode: string;
+  status_saat_ini: string;
+  prediksi_ml: {
+    sisa_umur_rul: string;
+    risiko_kerusakan: string;
+    status_prediksi: string;
+  } | string; 
 }
 
 export interface ChatResponse {
   reply: string;
+  debug_match?: DebugMatchItem[]; 
 }
 
-// ==========================================================
-// CONFIG
-// ==========================================================
-
-const API_URL = "http://localhost:4000/api";
-
-const api = axios.create({
-  baseURL: API_URL,
-  headers: { "Content-Type": "application/json" },
-  timeout: 10000,
-});
-
-// ==========================================================
-// SERVICES
-// ==========================================================
-
-export const dashboardService = {
-  getStats: async (): Promise<DashboardStats> => {
-    const response = await api.get<DashboardStats>("/dashboard/stats");
-    return response.data;
-  },
-
-  getRecentAlerts: async (): Promise<AlertsResponse> => {
-    const response = await api.get<AlertsResponse>("/alerts");
-    return response.data;
-  },
-
-  getMachinesList: async (): Promise<MachineListItem[]> => {
-    const response = await api.get<MachineListItem[]>("/dashboard/machines");
-    return response.data;
-  },
-};
-
-export const machineService = {
-  getDetail: async (machineId: string): Promise<MachineDetailData> => {
-    const response = await api.get<MachineDetailData>(`/machines/${machineId}`);
-    return response.data;
-  },
-
-  // ✅ KHUSUS SENSOR (Return Array langsung)
-  getSensorHistory: async (machineId: string): Promise<HistoryItem[]> => {
-    const response = await api.get<HistoryItem[]>(`/machines/${machineId}/history`);
-    return response.data;
-  },
-
-  // ✅ KHUSUS PREDIKSI (Return Object { prediction: [...] })
-  getPredictionHistory: async (id: string): Promise<MachineHistoryResponse> => {
-    const response = await api.get<{ prediction: PredictionItem[] }>(`/predict/history/${id}`);
-    return {
-        sensor: [], 
-        prediction: response.data.prediction || [] 
-    };
-  },
-};
+// --- SERVICES ---
 
 export const simulationService = {
-  getStatus: async (): Promise<SimulationStatusResponse> => {
-    try {
-      const response = await api.get<RawSimulationResponse>("/simulation/status");
-      const data = response.data;
-      
-      return { 
-        is_running: data.is_running ?? data.isRunning ?? false,
-        message: data.message
-      };
-    } catch {
-      return { is_running: false };
-    }
+  // 1. Start Simulasi
+  start: async () => {
+    const response = await api.post<SimulationResponse>("/simulation/start");
+    return response.data;
   },
-  
-  start: async () => api.post("/simulation/start"),
-  stop: async () => api.post("/simulation/stop"),
+
+  // 2. Stop Simulasi
+  stop: async () => {
+    // Menggunakan GET sesuai controller backend Anda saat ini
+    const response = await api.get<SimulationResponse>("/simulation/stop");
+    return response.data;
+  },
+
+  // 3. Cek Status (Untuk tombol Start/Stop)
+  getStatus: async () => {
+    const response = await api.get<{ is_running: boolean }>("/simulation/status");
+    return response.data;
+  }
 };
 
-export const chatService = {
-  sendMessage: async (message: string): Promise<ChatResponse> => {
-    const response = await api.post<ChatResponse>("/chat", { message });
+export const dashboardService = {
+  getSummary: async () => {
+    const response = await api.get<DashboardSummaryResponse>("/dashboard/summary");
+    return response.data;
+  },
+
+  getTrend: async () => {
+    const response = await api.get<TrendDataPoint[]>("/dashboard/trend");
+    return response.data;
+  },
+
+  getMachines: async () => {
+    const response = await api.get<MachineDetailResponse[]>("/machines");
+    return response.data;
+  },
+
+  getMachineDetail: async (asetId: string) => {
+    const response = await api.get<MachineDetailResponse>(`/machines/${asetId}`);
+    return response.data;
+  },
+
+  // --- FIX PENTING: Menambahkan getSensors ---
+  // Ini diperlukan oleh MachineHealthChart.tsx
+  getSensors: async (asetId: string) => {
+    // Mengambil data history sensor untuk grafik realtime
+    const response = await api.get<SensorHistoryData[]>(`/machines/${asetId}/history`);
+    return response.data;
+  },
+
+  // Method baru untuk mengambil data dari tabel sensor_data
+  getSensorData: async (asetId: string) => {
+    const response = await api.get(`/sensor-data/machine/${asetId}`);
+    return response.data;
+  },
+
+  getHistory: async (asetId: string) => {
+    const response = await api.get<SensorHistoryData[]>(`/machines/${asetId}/history`);
+    return response.data;
+  },
+
+  getAlerts: async () => {
+    const response = await api.get<{ alerts: AlertData[] } | AlertData[]>(`/alerts`);
+    const data = response.data;
+    // Handle format { alerts: [...] } atau array langsung [...]
+    return Array.isArray(data) ? data : data.alerts;
+  },
+
+  getAlertDetail: async (alertId: number) => {
+    const response = await api.get<AlertData>(`/alerts/${alertId}`);
+    return response.data;
+  },
+
+  getPredict: async (payload: PredictPayload) => {
+    const response = await api.post<PredictResponseFE>(`/predict`, payload);
+    return response.data;
+  },
+
+  sendMessage: async (message: string) => {
+    const response = await api.post<ChatResponse>('/chat', { message });
     return response.data;
   }
 };

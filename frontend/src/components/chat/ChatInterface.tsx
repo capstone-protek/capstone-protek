@@ -1,24 +1,16 @@
 import { useState, useRef, useEffect } from "react";
-import { useChat } from "@/context/ChatContext"; 
-import { Send, BrainCog, User, Loader2, Trash2 } from "lucide-react";
+import { Send, Bot, User, Loader2, Trash2 } from "lucide-react"; // Tambah Trash2
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import ReactMarkdown from 'react-markdown';
-import { toast } from "sonner";
+import { dashboardService } from "@/services/api"; 
 
-// 1. IMPORT KOMPONEN ALERT DIALOG
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+interface Message {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: string; // String untuk support JSON
+}
 
 const suggestions = [
   "Bagaimana status semua mesin?",
@@ -27,152 +19,186 @@ const suggestions = [
   "Kondisi mesin M-14850",
 ];
 
+const STORAGE_KEY = "protek_chat_history"; // Samakan key dengan widget agar sinkron
+
 export function ChatInterface() {
-  const { messages, isLoading, sendMessage, clearHistory } = useChat();
+  // --- BARU: Load from LocalStorage ---
+  const [messages, setMessages] = useState<Message[]>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        // Mapping sedikit karena struktur ID/Role di widget vs interface mungkin beda dikit
+        // Tapi logic utamanya sama: ambil JSON
+        return JSON.parse(saved);
+      }
+    }
+    return [{
+      id: "1",
+      role: "assistant",
+      content: "Halo! Saya Maintenance Copilot. Saya terhubung langsung ke data sensor pabrik. Ada yang bisa saya bantu?",
+      timestamp: new Date().toISOString(),
+    }];
+  });
+
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Auto scroll
+  // --- BARU: Save to LocalStorage ---
   useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
     if (scrollRef.current) {
       scrollRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
 
-  const handleSubmit = (e?: React.FormEvent, textOverride?: string) => {
-    if (e) e.preventDefault();
-    const text = textOverride || input;
-    if (!text.trim()) return; 
-    sendMessage(text);
+  // --- BARU: Clear History ---
+  const handleClear = () => {
+    if(confirm("Apakah Anda yakin ingin menghapus semua riwayat chat?")) {
+        const resetMsg: Message[] = [{
+            id: Date.now().toString(),
+            role: "assistant",
+            content: "Riwayat percakapan telah dibersihkan.",
+            timestamp: new Date().toISOString(),
+        }];
+        setMessages(resetMsg);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(resetMsg));
+    }
+  }
+
+  const handleSend = async (message?: string) => {
+    const query = message || input;
+    if (!query.trim() || isLoading) return;
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: "user",
+      content: query,
+      timestamp: new Date().toISOString(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
     setInput("");
   };
 
-  // 2. FUNGSI EKSEKUSI HAPUS (Dijalankan setelah user klik "Ya, Hapus")
-  const executeClearChat = () => {
-    clearHistory();
-    toast.success("Riwayat percakapan telah dibersihkan.", {
-      position: "top-center",
-      duration: 3000,
-    });
+    try {
+      const data = await dashboardService.sendMessage(query);
+
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: data.reply,
+        timestamp: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, assistantMessage]);
+
+    } catch (error) {
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: "Maaf, terjadi gangguan koneksi ke server.",
+        timestamp: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="flex h-[calc(100vh-8rem)] flex-col space-y-4">
-       <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-card relative">
+      <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-card relative">
         
-        {/* Messages Area */}
-        <ScrollArea className="flex-1 p-6"> 
-          <div className="space-y-6">
-            
-            {messages.length === 0 && (
-                <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground mt-10 opacity-50">
-                    <BrainCog className="h-12 w-12 mb-2" />
-                    <p>Mulai percakapan dengan Protek Copilot</p>
-                </div>
-            )}
+        {/* --- BARU: Tombol Clear History Melayang di Kanan Atas --- */}
+        <div className="absolute top-4 right-4 z-10">
+            <Button variant="ghost" size="icon" onClick={handleClear} title="Bersihkan Chat">
+                <Trash2 className="w-5 h-5 text-muted-foreground hover:text-destructive transition-colors" />
+            </Button>
+        </div>
 
+        {/* Messages */}
+        <ScrollArea className="flex-1 p-6" ref={scrollRef}> 
+          <div className="space-y-6">
             {messages.map((message) => (
-              <div key={message.id} className={`flex gap-3 ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+              <div
+                key={message.id}
+                className={`flex gap-3 ${
+                  message.role === "user" ? "justify-end" : "justify-start"
+                }`}
+              >
                 {message.role === "assistant" && (
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                    <BrainCog className="h-5 w-5 text-primary" />
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                    <Bot className="h-5 w-5 text-primary" />
                   </div>
                 )}
-                
-                <div className={`max-w-[80%] rounded-lg px-4 py-3 ${
-                    message.role === "user" ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground"
-                  }`}>
-                  <div className="text-sm leading-relaxed prose dark:prose-invert max-w-none">
-                     <ReactMarkdown components={{ p: (props) => <p className="m-0" {...props} /> }}>
-                        {message.text}
-                     </ReactMarkdown>
-                  </div>
+                <div
+                  className={`max-w-[80%] rounded-lg px-4 py-3 ${
+                    message.role === "user"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary text-foreground"
+                  }`}
+                >
+                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                 </div>
-
                 {message.role === "user" && (
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
                     <User className="h-5 w-5 text-primary-foreground" />
                   </div>
                 )}
               </div>
             ))}
             
+            {/* Loading Indicator */}
             {isLoading && (
               <div className="flex gap-3">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
-                  <BrainCog className="h-5 w-5 animate-pulse text-primary" />
+                  <Bot className="h-5 w-5 animate-pulse text-primary" />
                 </div>
                 <div className="max-w-[80%] rounded-lg bg-secondary px-4 py-3">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Sedang menganalisa...</span>
+                    <span>Sedang menganalisa data pabrik...</span>
                   </div>
                 </div>
               </div>
             )}
-            
-            <div ref={scrollRef} />
           </div>
         </ScrollArea>
 
         {/* Suggestions */}
-        {messages.length <= 1 && (
-          <div className="border-t border-border p-4 bg-background/50 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <p className="mb-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Rekomendasi Pertanyaan:</p>
+        {messages.length === 1 && (
+          <div className="border-t border-border p-4">
+            <p className="mb-3 text-sm font-medium text-muted-foreground">
+              Pertanyaan Rekomendasi:
+            </p>
             <div className="grid gap-2 sm:grid-cols-2">
-              {suggestions.map((s, i) => (
-                <Button key={i} variant="outline" size="sm" className="justify-start text-left h-auto py-2 whitespace-normal text-xs" onClick={() => handleSubmit(undefined, s)}>
-                  {s}
+              {suggestions.map((suggestion, index) => (
+                <Button
+                  key={index}
+                  variant="outline"
+                  size="sm"
+                  className="justify-start text-left h-auto py-2 whitespace-normal"
+                  onClick={() => handleSend(suggestion)}
+                >
+                  {suggestion}
                 </Button>
               ))}
             </div>
           </div>
         )}
 
-        {/* Input Area */}
-        <div className="border-t border-border p-4 bg-background">
-          <form onSubmit={(e) => handleSubmit(e)} className="flex gap-2">
-            
-            {/* 3. BUNGKUS TOMBOL DELETE DENGAN ALERT DIALOG */}
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button 
-                  type="button" 
-                  variant="ghost" 
-                  size="icon" 
-                  disabled={messages.length === 0 || isLoading}
-                  className="text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors"
-                >
-                    <Trash2 className="w-5 h-5" />
-                </Button>
-              </AlertDialogTrigger>
-              
-              {/* ISI MODAL KONFIRMASI (YANG MENGGANTIKAN POPUP BROWSER) */}
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Hapus semua percakapan?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Tindakan ini tidak dapat dibatalkan. Semua riwayat chat Anda dengan Protek Copilot akan dihapus permanen.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Batal</AlertDialogCancel>
-                  {/* Klik tombol ini baru menjalankan fungsi hapus */}
-                  <AlertDialogAction onClick={executeClearChat} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                    Ya, Hapus
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-
-            <Input 
-              value={input} 
-              onChange={(e) => setInput(e.target.value)} 
-              placeholder="Tanya tentang status mesin..." 
-              disabled={isLoading} 
-              className="flex-1" 
+        {/* Input Form */}
+        <div className="border-t border-border p-4">
+          <form
+            onSubmit={(e) => { e.preventDefault(); handleSend(); }}
+            className="flex gap-2"
+          >
+            <Input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Tanya tentang status mesin..."
+              disabled={isLoading}
+              className="flex-1"
             />
-            
             <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
               <Send className="h-4 w-4" />
             </Button>

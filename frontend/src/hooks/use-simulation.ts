@@ -1,70 +1,50 @@
+// src/hooks/use-simulation.ts
 import { useState, useEffect, useCallback } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { simulationService } from '@/services/api';
-import { toast } from 'sonner';
+import { api } from '../lib/api'; // Import dari file api yang baru kita buat
 
 export function useSimulation() {
-  const [isRunning, setIsRunning] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const queryClient = useQueryClient();
-
-  // Helper untuk refresh data dashboard saat simulasi berjalan
-  const refreshDashboard = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
-    queryClient.invalidateQueries({ queryKey: ["dashboard-alerts"] });
-    queryClient.invalidateQueries({ queryKey: ["machine-history"] });
-  }, [queryClient]);
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [simulationStatus, setSimulationStatus] = useState<string>('idle');
 
   const checkStatus = useCallback(async () => {
-    try {
-      const data = await simulationService.getStatus();
-      setIsRunning(data.is_running);
-    } catch (error) {
-      console.error("Gagal sync status simulasi", error);
+    const data = await api.getSimulationStatus();
+    if (data) {
+      setSimulationStatus(data.status || 'unknown');
+      
+      if (data.status === 'running' && !isSimulating) setIsSimulating(true);
+      if (data.status !== 'running' && isSimulating) setIsSimulating(false);
     }
-  }, []);
+  }, [isSimulating]);
 
-  // Toggle Start/Stop
-  const toggleSimulation = async () => {
-    setIsLoading(true);
-    try {
-      if (isRunning) {
-        await simulationService.stop();
-        toast.info("Simulasi dihentikan.");
-        setIsRunning(false);
-      } else {
-        await simulationService.start();
-        toast.success("Simulasi dimulai! Grafik akan bergerak.");
-        setIsRunning(true);
-        // Langsung refresh data agar user tidak menunggu interval
-        refreshDashboard();
-      }
-    } catch (error) {
-      console.error("Error toggle simulation:", error);
-      toast.error("Gagal mengubah status simulasi.");
-      // Re-sync status asli jika error
-      await checkStatus();
-    } finally {
-      setIsLoading(false);
-    }
+  const startSimulation = async () => {
+    setIsSimulating(true);
+    await api.startSimulation();
+    checkStatus(); 
   };
 
-  // Polling Status & Data Refresh
+  const stopSimulation = async () => {
+    setIsSimulating(false);
+    await api.stopSimulation();
+    checkStatus(); 
+  };
+
   useEffect(() => {
-    checkStatus(); // Cek awal
-
-    // Interval cek status simulasi
-    const statusInterval = setInterval(checkStatus, 3000);
-
-    // Jika running, kita bisa memaksa refresh data grafik lebih agresif (opsional)
-    // tapi biasanya refetchInterval di useQuery masing-masing komponen sudah cukup.
+    // KITA UBAH TIPE INI JADI 'any' AGAR ERROR 'Cannot find namespace NodeJS' HILANG
+    let interval: any; 
     
-    return () => clearInterval(statusInterval);
-  }, [checkStatus]);
+    checkStatus();
+
+    if (isSimulating) {
+      interval = setInterval(checkStatus, 2000);
+    }
+
+    return () => clearInterval(interval);
+  }, [isSimulating, checkStatus]);
 
   return {
-    isRunning,
-    isLoading,
-    toggleSimulation
+    isSimulating,
+    simulationStatus,
+    startSimulation,
+    stopSimulation
   };
 }

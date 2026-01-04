@@ -4,91 +4,110 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { PredictionChart } from "@/components/dashboard/PredictionChart"; 
 import { RecentAlertsTable } from "@/components/dashboard/RecentAlertsTable";
-import SimulationControl from "@/components/dashboard/SimulationControl";
+import { SimulationControl } from "@/components/dashboard/SimulationControl";
 import { ChatWidget } from "@/components/chat/ChatWidget";
-import { 
-  dashboardService, 
-  type DashboardStats, 
-  type AlertsResponse,
-  type AlertData 
-} from "@/services/api";
+import { api } from "@/lib/api";
 
 const Index = () => {
-  const statsQuery = useQuery<DashboardStats>({
-    queryKey: ["dashboard-stats"],
-    queryFn: dashboardService.getStats,
-    refetchInterval: 3000, // Refresh stat setiap 3 detik
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["dashboard-summary"],
+    queryFn: async () => {
+      // Backend Anda ternyata mengembalikan paket lengkap di endpoint ini
+      const response = await api.getStats();
+      console.log("Full Dashboard Data:", response); // Cek console untuk memastikan
+      return response;
+    },
+    refetchInterval: 3000, 
   });
 
-  const alertsQuery = useQuery<AlertsResponse>({
-    queryKey: ["dashboard-alerts"],
-    queryFn: dashboardService.getRecentAlerts,
-    refetchInterval: 3000, // Refresh alert setiap 3 detik
-  });
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="flex h-[80vh] items-center justify-center">
+          <div className="animate-pulse text-xl font-medium text-muted-foreground">
+            Connecting to System...
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
 
-  const stats = statsQuery.data; 
-  const alertsData: AlertData[] = alertsQuery.data?.alerts || []; 
+  if (isError || !data) {
+    return (
+      <AppLayout>
+        <div className="flex h-[80vh] items-center justify-center flex-col gap-2">
+          <AlertTriangle className="h-10 w-10 text-destructive" />
+          <p className="text-lg text-destructive font-bold">Connection Failed</p>
+          <p className="text-sm text-muted-foreground">Check Console for details</p>
+        </div>
+      </AppLayout>
+    );
+  }
 
-  // Hitung persentase kesehatan sistem
-  const systemHealth = stats && stats.total > 0 
-    ? Math.round((stats.healthy / stats.total) * 100) 
-    : 0;
+  // Fallback data jika backend mengirim null/undefined
+  const summary = data.summary || { 
+    totalMachines: 0, 
+    todaysAlerts: 0, 
+    criticalMachines: 0, 
+    systemHealth: 0 
+  };
+
+  const recentAlerts = data.recentAlerts || [];
 
   return (
     <AppLayout>
-       {/* Header Section dengan Title dan Simulation Control */}
-       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-           <div>
-               <h1 className="text-2xl font-bold tracking-tight text-gray-900">Dashboard Monitoring</h1>
-               <p className="text-muted-foreground">Overview kondisi mesin dan prediksi AI realtime.</p>
-           </div>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+        <div>
+          <h1 className="text-3xl md:text-4xl font-extrabold text-foreground mb-2 tracking-tight">
+            Dashboard
+          </h1>
+          <p className="text-muted-foreground text-base md:text-lg font-medium">
+            Realtime Machine Monitoring
+          </p>
+        </div>
+
+        <div className="flex items-center gap-4">
            <SimulationControl />
-       </div>
+        </div>
+      </div>
 
       {/* Stats Cards */}
-      {stats ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <StatsCard
-            title="Total Machines"
-            value={stats.total}
-            icon={Activity}
-            variant="info"
-          />
-          <StatsCard
-            title="Unhealthy"
-            value={stats.warning + stats.critical} 
-            icon={AlertTriangle}
-            variant="danger"
-          />
-          <StatsCard
-            title="Healthy"
-            value={stats.healthy}
-            icon={Wrench}
-            variant="success"
-          />
-          <StatsCard
-            title="System Health"
-            value={`${systemHealth}%`}
-            icon={ShieldCheck} 
-            variant={systemHealth < 70 ? "danger" : "success"}
-          />
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-8 animate-pulse">
-            {[1,2,3,4].map(i => <div key={i} className="h-32 bg-gray-100 rounded-xl"></div>)}
-        </div>
-      )}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <StatsCard
+          title="Total Machines"
+          value={summary.totalMachines}
+          icon={Activity}
+          variant="info"
+        />
+        <StatsCard
+          title="Active Alerts"
+          value={summary.todaysAlerts}
+          icon={AlertTriangle}
+          variant="danger"
+        />
+        <StatsCard
+          title="Critical Status"
+          value={summary.criticalMachines}
+          icon={Wrench}
+          variant={summary.criticalMachines > 0 ? "warning" : "success"}
+        />
+        <StatsCard
+          title="System Health"
+          value={`${summary.systemHealth}%`}
+          icon={ShieldCheck}
+          variant={summary.systemHealth < 70 ? "danger" : "success"}
+        />
+      </div>
       
-      {/* Main Content Grid */}
-      <div className="grid lg:grid-cols-3 gap-8 mb-8">
-        {/* Chart mengambil 2 kolom */}
-        <div className="lg:col-span-2">
-            <PredictionChart />
+      {/* Charts & Tables */}
+      <div className="grid lg:grid-cols-7 gap-6 mb-8">
+        <div className="lg:col-span-4">
+          <MachineHealthChart />
         </div>
         
-        {/* Alerts Table mengambil 1 kolom */}
-        <div className="lg:col-span-1">
-            <RecentAlertsTable data={alertsData} /> 
+        <div className="lg:col-span-3">
+           <RecentAlertsTable data={recentAlerts} /> 
         </div>
       </div>
 

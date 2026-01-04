@@ -1,56 +1,49 @@
+// src/components/dashboard/SimulationControl.tsx
 import { Play, Square, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { useSimulation } from "@/hooks/use-simulation";
+import { useSimulation } from "@/hooks/use-simulation"; 
+import { Button } from "@/components/ui/button"; // Asumsi pakai shadcn/ui button
 
-const SimulationControl = () => {
-  // Gunakan hook yang baru kita buat
-  const { isRunning, isLoading, toggleSimulation } = useSimulation();
+export function SimulationControl() {
+  const { isSimulating, startSimulation, stopSimulation, simulationStatus } = useSimulation();
 
   return (
-    <div className="flex items-center gap-4 bg-white/50 backdrop-blur-sm border border-gray-200 rounded-xl p-2 px-4 shadow-sm">
-      
-      {/* Indikator Visual */}
+    <div className="flex items-center gap-3 bg-card border px-4 py-2 rounded-lg shadow-sm">
       <div className="flex flex-col">
-        <div className="flex items-center gap-2">
-            <span className="relative flex h-3 w-3">
-            {isRunning && (
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-            )}
-            <span className={`relative inline-flex rounded-full h-3 w-3 ${isRunning ? "bg-green-500" : "bg-gray-400"}`}></span>
-            </span>
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                {isRunning ? "LIVE DATA" : "OFFLINE"}
-            </span>
-        </div>
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          Simulation Status
+        </span>
+        <span className={`text-sm font-bold ${isSimulating ? 'text-green-500' : 'text-gray-500'}`}>
+          {isSimulating ? "RUNNING" : "STOPPED"}
+        </span>
       </div>
 
-      <div className="h-8 w-[1px] bg-gray-200 mx-1"></div>
+      <div className="h-8 w-px bg-border mx-1" />
 
-      {/* Tombol Control */}
-      <Button 
-        size="sm" 
-        variant={isRunning ? "destructive" : "default"}
-        onClick={toggleSimulation}
-        disabled={isLoading}
-        className={`gap-2 transition-all min-w-[140px] shadow-sm ${isRunning ? 'bg-destructive hover:bg-red-600' : 'bg-info hover:bg-blue-700'}`}
-      >
-        {isLoading ? (
-          <>
+      {isSimulating ? (
+        <Button 
+          onClick={stopSimulation} 
+          variant="destructive" 
+          size="sm"
+          className="gap-2"
+        >
+          <Square className="h-4 w-4 fill-current" />
+          Stop
+        </Button>
+      ) : (
+        <Button 
+          onClick={startSimulation} 
+          variant="default" // atau "primary" tergantung tema
+          size="sm"
+          className="gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+        >
+          {simulationStatus === 'loading' ? (
             <Loader2 className="h-4 w-4 animate-spin" />
-            Syncing...
-          </>
-        ) : isRunning ? (
-          <>
-            <Square className="h-4 w-4 fill-current" /> Stop Simulation
-          </>
-        ) : (
-          <>
-            <Play className="h-4 w-4 fill-current" /> Start Simulation
-          </>
-        )}
-      </Button>
+          ) : (
+            <Play className="h-4 w-4 fill-current" />
+          )}
+          Start Demo
+        </Button>
+      )}
     </div>
   );
-};
-
-export default SimulationControl;
+}

@@ -1,26 +1,16 @@
-import type { AlertData } from "@/services/api"; // Make sure to import from your API definition which has the correct type
+import type { AlertData } from "@/types";
 import { AlertTriangle, AlertOctagon, Info, CheckCircle2 } from "lucide-react";
 
 interface RecentAlertsTableProps {
-  data?: AlertData[] | { alerts: AlertData[] } | null;
+  data?: AlertData[];
 }
 
-export const RecentAlertsTable = ({ data }: RecentAlertsTableProps) => {
+export const RecentAlertsTable = ({ data = [] }: RecentAlertsTableProps) => {
   
-  let alertsList: AlertData[] = [];
-
-  if (data) {
-    if (Array.isArray(data)) {
-      alertsList = data;
-    } else if ('alerts' in data && Array.isArray(data.alerts)) {
-      alertsList = data.alerts;
-    }
-  }
-
+  // 1. Helper function untuk menentukan warna & icon berdasarkan severity
   const getSeverityBadge = (severity: string) => {
     switch (severity) {
       case "CRITICAL":
-      case "HIGH": // Handle HIGH as CRITICAL for badge color
         return (
           <div className="flex items-center gap-2 text-red-600 bg-red-100 dark:bg-red-900/30 dark:text-red-400 px-2 py-1 rounded-full w-fit">
             <AlertOctagon className="h-4 w-4" />
@@ -28,7 +18,6 @@ export const RecentAlertsTable = ({ data }: RecentAlertsTableProps) => {
           </div>
         );
       case "WARNING":
-      case "MEDIUM":
         return (
           <div className="flex items-center gap-2 text-yellow-600 bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-400 px-2 py-1 rounded-full w-fit">
             <AlertTriangle className="h-4 w-4" />
@@ -36,7 +25,6 @@ export const RecentAlertsTable = ({ data }: RecentAlertsTableProps) => {
           </div>
         );
       case "INFO":
-      case "LOW":
         return (
           <div className="flex items-center gap-2 text-blue-600 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-1 rounded-full w-fit">
             <Info className="h-4 w-4" />
@@ -48,6 +36,7 @@ export const RecentAlertsTable = ({ data }: RecentAlertsTableProps) => {
     }
   };
 
+  // 2. Format Tanggal agar enak dibaca (Contoh: 10 Des, 14:30)
   const formatDate = (dateString: string | Date) => {
     return new Date(dateString).toLocaleString("id-ID", {
       day: "numeric",
@@ -59,6 +48,7 @@ export const RecentAlertsTable = ({ data }: RecentAlertsTableProps) => {
 
   return (
     <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
+      {/* Header Card */}
       <div className="p-6 flex flex-row items-center justify-between pb-4">
         <div>
           <h3 className="font-bold text-lg">Recent Alerts</h3>
@@ -66,12 +56,16 @@ export const RecentAlertsTable = ({ data }: RecentAlertsTableProps) => {
             Riwayat peringatan sistem terbaru.
           </p>
         </div>
+        {/* Badge jumlah alert */}
         <span className="bg-muted text-muted-foreground text-xs font-medium px-2.5 py-0.5 rounded-full">
-          {alertsList.length} Total
+          {data.length} Total
         </span>
       </div>
+
+      {/* Konten Tabel */}
       <div className="p-0 overflow-x-auto">
-        {alertsList.length === 0 ? (
+        {data.length === 0 ? (
+          // --- TAMPILAN JIKA DATA KOSONG ---
           <div className="flex flex-col items-center justify-center py-10 text-center">
             <CheckCircle2 className="h-10 w-10 text-green-500 mb-2" />
             <p className="text-lg font-medium">All Systems Operational</p>
@@ -80,6 +74,7 @@ export const RecentAlertsTable = ({ data }: RecentAlertsTableProps) => {
             </p>
           </div>
         ) : (
+          // --- TAMPILAN TABEL ---
           <table className="w-full text-sm text-left">
             <thead className="bg-muted/50 text-muted-foreground uppercase text-xs">
               <tr>
@@ -90,7 +85,8 @@ export const RecentAlertsTable = ({ data }: RecentAlertsTableProps) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {alertsList.map((alert) => (
+              {/* Mapping Data alert ke baris tabel */}
+              {data.map((alert) => (
                 <tr 
                   key={alert.id} 
                   className="bg-card hover:bg-muted/50 transition-colors"
@@ -100,10 +96,9 @@ export const RecentAlertsTable = ({ data }: RecentAlertsTableProps) => {
                   </td>
                   <td className="px-6 py-4 font-medium text-foreground">
                     <div>
-                      {alert.machine?.name || "Unknown"}
+                      {alert.machine.name}
                       <div className="text-xs text-muted-foreground mt-0.5">
-                        {/* FIX: Use machine_id instead of asetId */}
-                        {alert.machine?.machine_id || alert.machine_id || "-"}
+                        {alert.machine.asetId}
                       </div>
                     </div>
                   </td>

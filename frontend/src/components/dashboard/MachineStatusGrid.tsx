@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
-import { dashboardService, type MachineListItem } from "@/services/api"; // Import from api service
+import { dashboardService } from "@/services/api";
+import type { MachineStatus, MachineDetailResponse } from "@/types";
 import { cn } from "@/lib/utils";
 
 // Define status config locally to avoid import issues
@@ -23,10 +24,9 @@ function getHealthColor(score: number): string {
 }
 
 export function MachineStatusGrid() {
-  // Use getMachinesList from your dashboardService
-  const { data: machines = [], isLoading, error } = useQuery<MachineListItem[]>({
-    queryKey: ['machines-list'],
-    queryFn: dashboardService.getMachinesList,
+  const { data: machines = [], isLoading, error } = useQuery<MachineDetailResponse[]>({
+    queryKey: ['machines'],
+    queryFn: () => dashboardService.getMachines(),
   });
 
   if (isLoading) {

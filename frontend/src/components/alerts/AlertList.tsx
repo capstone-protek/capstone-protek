@@ -18,14 +18,15 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import type { AlertData } from "@/types";
 import { cn } from "@/lib/utils";
-// ✅ FIX: Import dari api.ts
-import { dashboardService, type AlertData } from "@/services/api";
+import { dashboardService } from "@/services/api";
+import { mockAlerts } from "@/data/mockData";
 
 const severityStyles: Record<string, string> = {
-  CRITICAL: "bg-red-100 text-red-600 border-red-200",
-  WARNING: "bg-yellow-100 text-yellow-600 border-yellow-200",
-  INFO: "bg-blue-100 text-blue-600 border-blue-200",
+  CRITICAL: "bg-destructive/10 text-destructive border-destructive/20",
+  WARNING: "bg-warning/10 text-warning border-warning/20",
+  INFO: "bg-info/10 text-info border-info/20",
 };
 
 const severityOrder = ["CRITICAL", "WARNING", "INFO"];
@@ -48,17 +49,21 @@ export function AlertList() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setLoading(true);
+    // Try to fetch from API, fallback to mock data
     dashboardService
-      .getRecentAlerts()
+      .getAlerts()
       .then((data) => {
-        // ✅ FIX: Backend return { alerts: [...] }
-        const alertsArray = data?.alerts || [];
+        // Backend mengembalikan { alerts: [...] } atau array langsung
+        const alertsArray = Array.isArray(data) 
+          ? data 
+          : (data as data)?.alerts || [];
         setAlerts(alertsArray);
       })
-      .catch((err) => {
-        console.error("Error fetching alerts:", err);
-        setAlerts([]); // Set empty on error
+      .catch((error) => {
+        console.error("Error fetching alerts:", error);
+        console.log("Using mock data");
+        // Convert mock data to AlertData format if needed
+        setAlerts(mockAlerts as AlertData[]);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -71,9 +76,9 @@ export function AlertList() {
       const message = alert.message || "";
 
       const matchesSearch =
-        machineId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        message.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        machineName.toLowerCase().includes(searchQuery.toLowerCase());
+        alert.machine.asetId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        alert.message.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        alert.machine.name.toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchesSeverity =
         severityFilter === "all" || alert.severity === severityFilter;
@@ -168,23 +173,23 @@ export function AlertList() {
                         <span
                           className={cn(
                             "px-2 py-1 rounded-md text-xs font-semibold border capitalize",
-                            severityStyles[alert.severity] || "bg-gray-100 text-gray-600 border-gray-200"
+                            severityStyles[alert.severity] || "bg-muted text-muted-foreground border-border"
                           )}
                         >
                           {alert.severity}
                         </span>
                         <span className="text-sm text-muted-foreground">
-                          {formatDate(alert.timestamp)}
+                          {formatDate(alert.timestamp.toString())}
                         </span>
                       </div>
                       <h4 className="font-semibold text-foreground">
                         {alert.message}
                       </h4>
                       <Link
-                        to={`/machines/${alert.machine_id}`} // ✅ FIX: Link ke route machines
-                        className="text-sm text-primary hover:underline flex items-center gap-1 mt-1"
+                        to={`/machine/${alert.machine.asetId}`}
+                        className="text-sm text-primary hover:underline"
                       >
-                        Machine: {alert.machine?.name || "Unknown"} ({alert.machine_id})
+                        Machine: {alert.machine.name} ({alert.machine.asetId})
                       </Link>
                     </div>
                     <Button
@@ -207,9 +212,9 @@ export function AlertList() {
       <Dialog open={!!selectedAlert} onOpenChange={() => setSelectedAlert(null)}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Alert Details</DialogTitle>
+            <DialogTitle>{selectedAlert?.message}</DialogTitle>
             <DialogDescription>
-              Machine: {selectedAlert?.machine?.name || "Unknown"} ({selectedAlert?.machine_id})
+              {selectedAlert?.machine.name} ({selectedAlert?.machine.asetId})
             </DialogDescription>
           </DialogHeader>
           {selectedAlert && (
@@ -239,13 +244,13 @@ export function AlertList() {
                   Timestamp
                 </h5>
                 <p className="text-sm text-muted-foreground">
-                  {formatDate(selectedAlert.timestamp)}
+                  {formatDate(selectedAlert.timestamp.toString())}
                 </p>
               </div>
 
               <div className="flex gap-2 pt-4">
                 <Button className="flex-1" asChild>
-                  <Link to={`/machines/${selectedAlert.machine_id}`}>
+                  <Link to={`/machine/${selectedAlert.machine.asetId}`}>
                     View Machine
                   </Link>
                 </Button>

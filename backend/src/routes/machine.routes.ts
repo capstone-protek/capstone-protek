@@ -1,10 +1,10 @@
 // backend/src/routes/machine.routes.ts
 import { Router } from 'express';
-import { getMachines, getMachineDetail, getMachineHistory } from '../controllers/machine.controller';
+import { getMachines, getMachineDetail, getMachineHistory, getMachinesLite } from '../controllers/machine.controller';
 
 const router = Router();
 
-// router.get('/list-lite', getMachinesLite);  // Akses: /api/machines/list-lite (HARUS di atas /:id)
+router.get('/list-lite', getMachinesLite);  // Akses: /api/machines/list-lite (HARUS di atas /:id)
 router.get('/', getMachines);               // Akses: /api/machines
 router.get('/:id', getMachineDetail);       // Akses: /api/machines/1
 router.get('/:id/history', getMachineHistory);

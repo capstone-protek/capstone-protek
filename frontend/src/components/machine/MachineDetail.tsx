@@ -1,3 +1,4 @@
+import React from "react";
 import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, AlertTriangle, CheckCircle, XCircle, Info } from "lucide-react";
 import {
@@ -27,11 +28,9 @@ import {
   ResponsiveContainer
 } from "recharts";
 import { useQuery } from "@tanstack/react-query";
-import { 
-  machineService, 
-  type HistoryItem, // ✅ FIX: Pastikan ini diimport
-  type MachineDetailData 
-} from "@/services/api";
+import { dashboardService } from "@/services/api";
+import { mockMachines as machines, maintenanceHistory, mockAlerts as alerts } from "@/data/mockData";
+import type { MachineStatus, MachineDetailResponse, AlertData, SensorHistoryData } from "@/types";
 import { cn } from "@/lib/utils";
 
 // Konfigurasi Status (Mapping warna & icon)
@@ -64,22 +63,67 @@ export function MachineDetail() {
     refetchInterval: 5000,
   });
 
-  // --- Loading State ---
-  if (loadingDetail) {
+  // Fetch machine detail from API
+  const { data: detail, isLoading: isLoadingDetail } = useQuery<MachineDetailResponse>({
+    queryKey: ['machine-detail', asetId],
+    queryFn: () => dashboardService.getMachineDetail(asetId),
+    enabled: !!asetId,
+  });
+
+  // Fetch sensor history from API
+  const { data: sensorHistoryData = [], isLoading: isLoadingHistory } = useQuery<SensorHistoryData[]>({
+    queryKey: ['machine-history', asetId],
+    queryFn: () => dashboardService.getHistory(asetId),
+    enabled: !!asetId,
+  });
+
+  // Fallback to mock data if API fails
+  const summary = machines.find((m: { asetId: string; name: string; status: MachineStatus }) => m.asetId === asetId);
+
+  // Compute latest reading from sensor history
+  const latestReading = React.useMemo(() => {
+    if (!sensorHistoryData || sensorHistoryData.length === 0) return null;
+    
+    // Group by timestamp and get latest readings for each sensor type
+    const sensorTypes = ['Air_Temp', 'Process_Temp', 'RPM', 'Torque', 'Tool_Wear'];
+    const latestByType: Record<string, SensorHistoryData> = {};
+    
+    sensorHistoryData.forEach((reading) => {
+      if (sensorTypes.includes(reading.type)) {
+        const existing = latestByType[reading.type];
+        if (!existing || new Date(reading.timestamp) > new Date(existing.timestamp)) {
+          latestByType[reading.type] = reading;
+        }
+      }
+    });
+
+    // Check if we have all required sensor types
+    const hasAllSensors = sensorTypes.every(type => latestByType[type]);
+    if (!hasAllSensors) return null;
+
+    // Get the latest timestamp
+    const timestamps = Object.values(latestByType).map(r => new Date(r.timestamp));
+    const latestTimestamp = new Date(Math.max(...timestamps.map(d => d.getTime())));
+
+    return {
+      timestamp: latestTimestamp.toISOString(),
+      airTemp: latestByType['Air_Temp']?.value || 0,
+      processTemp: latestByType['Process_Temp']?.value || 0,
+      rpm: latestByType['RPM']?.value || 0,
+      torque: latestByType['Torque']?.value || 0,
+      toolWear: latestByType['Tool_Wear']?.value || 0,
+    };
+  }, [sensorHistoryData]);
+
+  if (isLoadingDetail) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 min-h-[60vh]">
-        <div className="animate-pulse flex flex-col items-center gap-4">
-          <div className="h-12 w-12 bg-muted rounded-full"></div>
-          <div className="space-y-2 text-center">
-            <div className="h-4 w-48 bg-muted rounded"></div>
-            <p className="text-sm text-muted-foreground">Loading machine telemetry...</p>
-          </div>
-        </div>
+      <div className="flex flex-col items-center justify-center py-12">
+        <p className="text-muted-foreground">Loading machine details...</p>
       </div>
     );
   }
 
-  // --- Error/Not Found State ---
+  const machine = detail ?? summary;
   if (!machine) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center min-h-[60vh]">
@@ -99,29 +143,11 @@ export function MachineDetail() {
     );
   }
 
-  // --- Data Processing ---
-  
-  // A. Status Config (Fallback ke OFFLINE jika status tidak dikenali)
-  const statusKey = machine.status || "OFFLINE";
-  const status = statusConfig[statusKey] || statusConfig["OFFLINE"];
+  const status = statusConfig[machine.status as MachineStatus];
   const StatusIcon = status.icon;
-
-  // B. Latest Reading (Ambil data sensor paling baru dari array sensor_data detail)
-  const latestReading = machine.sensor_data && machine.sensor_data.length > 0 
-    ? machine.sensor_data[0] 
-    : null;
-
-  // C. Chart Data Mapping (Dari endpoint history)
-  // ✅ FIX: historyData sekarang sudah berupa Array, tidak perlu akses properti .sensor
-  const chartData = historyData 
-    ? [...historyData].reverse().map(s => ({
-        time: new Date(s.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute:'2-digit' }),
-        temp: s.air_temperature_k,
-        process: s.process_temperature_k,
-        rpm: s.rotational_speed_rpm,
-        torque: s.torque_nm
-      }))
-    : [];
+  const machineAlerts = alerts.filter((a: AlertData) => a.machine.asetId === asetId);
+  const machineMaintenanceHistory = maintenanceHistory.filter((m: { id: string; machineId: string; date: string; type: string; description: string }) => m.machineId === asetId);
+  const sensorHistory = generateSensorHistory();
 
   return (
     <div className="space-y-6 pb-10 animate-in fade-in duration-500">
@@ -181,12 +207,44 @@ export function MachineDetail() {
                 </p>
               </div>
             </div>
+            {latestReading && (
+              <div className="text-sm">
+                <p className="text-muted-foreground mb-2">Last Reading Timestamp</p>
+                <p className="text-xs">{new Date(latestReading.timestamp).toLocaleString()}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-            {latestReading ? (
-              <div className="bg-muted/40 p-3 rounded-lg border text-xs">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-muted-foreground font-medium">Last Data Received</span>
-                  <span className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></span>
+        <Card className="shadow-card lg:col-span-2">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">Sensor Data</CardTitle>
+            <CardDescription>Current readings from machine sensors</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoadingHistory ? (
+              <p className="text-sm text-muted-foreground">Loading sensor data...</p>
+            ) : latestReading ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Air Temperature</p>
+                  <p className="font-semibold">{latestReading.airTemp.toFixed(1)}°C</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Process Temperature</p>
+                  <p className="font-semibold">{latestReading.processTemp.toFixed(1)}°C</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">RPM</p>
+                  <p className="font-semibold">{Math.round(latestReading.rpm)}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Torque</p>
+                  <p className="font-semibold">{latestReading.torque.toFixed(1)}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Tool Wear</p>
+                  <p className="font-semibold">{Math.round(latestReading.toolWear)}</p>
                 </div>
                 <p className="font-mono text-sm font-semibold">
                   {new Date(latestReading.insertion_time).toLocaleString('id-ID')}
@@ -221,13 +279,36 @@ export function MachineDetail() {
         </div>
       </div>
 
-      {/* --- CHART SECTION --- */}
-      <Card className="shadow-sm">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-lg">Sensor Telemetry History</CardTitle>
-              <CardDescription>Real-time monitoring of Air Temp, Process Temp, Torque, and RPM.</CardDescription>
+      {/* Sensor Data Grid - simplified */}
+      <Card className="shadow-card">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg">Real-time Sensor Data</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoadingHistory ? (
+            <p className="text-sm text-muted-foreground">Loading sensor data...</p>
+          ) : latestReading ? (
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              <div className="p-3 rounded-lg bg-muted/50 border border-border">
+                <p className="text-xs text-muted-foreground">Air Temp</p>
+                <p className="text-lg font-semibold">{latestReading.airTemp.toFixed(1)}°C</p>
+              </div>
+              <div className="p-3 rounded-lg bg-muted/50 border border-border">
+                <p className="text-xs text-muted-foreground">Process Temp</p>
+                <p className="text-lg font-semibold">{latestReading.processTemp.toFixed(1)}°C</p>
+              </div>
+              <div className="p-3 rounded-lg bg-muted/50 border border-border">
+                <p className="text-xs text-muted-foreground">RPM</p>
+                <p className="text-lg font-semibold">{Math.round(latestReading.rpm)}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-muted/50 border border-border">
+                <p className="text-xs text-muted-foreground">Torque</p>
+                <p className="text-lg font-semibold">{latestReading.torque.toFixed(1)}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-muted/50 border border-border">
+                <p className="text-xs text-muted-foreground">Tool Wear</p>
+                <p className="text-lg font-semibold">{Math.round(latestReading.toolWear)}</p>
+              </div>
             </div>
             <div className="hidden md:flex gap-4 text-xs font-medium">
                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500"></span> Air Temp</span>
@@ -294,13 +375,51 @@ export function MachineDetail() {
 
       {/* --- ALERTS & MAINTENANCE --- */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* Active Alerts Table */}
-        <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <AlertTriangle className="h-5 w-5 text-orange-500" />
-              Recent Alerts
+        {/* Machine Alerts */}
+        <Card className="shadow-card">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">Active Alerts</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {machineAlerts.length > 0 ? (
+              <div className="space-y-3">
+                {machineAlerts.map((alert: AlertData) => (
+                  <div
+                    key={alert.id || `${alert.machine.asetId}-${alert.timestamp}`}
+                    className="p-3 rounded-lg border bg-muted/30"
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <Badge
+                        variant={
+                          alert.severity === "CRITICAL"
+                            ? "destructive"
+                            : alert.severity === "WARNING"
+                            ? "default"
+                            : "secondary"
+                        }
+                      >
+                        {alert.severity}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(alert.timestamp).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <p className="text-sm font-medium">{alert.message}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No active alerts</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Maintenance History */}
+        <Card className="shadow-card">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Maintenance History
             </CardTitle>
           </CardHeader>
           <CardContent>

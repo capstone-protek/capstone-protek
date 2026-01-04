@@ -3,7 +3,7 @@ import { Request, Response } from 'express';
 // Base URL ML dari env atau default
 // Pastikan tidak ada trailing slash '/' di sini untuk konsistensi
 const ML_API_URL =
-  process.env.ML_API_URL || 'https://capstone-protek-production.up.railway.app';
+  process.env.ML_API_URL || 'https://capstone-protek-production.up.railway.app/';
 
 /**
  * POST /api/simulation/start
