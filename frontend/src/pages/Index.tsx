@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Activity, AlertTriangle, Wrench, ShieldCheck } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { StatsCard } from "@/components/dashboard/StatsCard";
-import { MachineHealthChart } from "@/components/dashboard/MachineHealthChart";
+import { PredictionChart } from "@/components/dashboard/PredictionChart"; 
 import { RecentAlertsTable } from "@/components/dashboard/RecentAlertsTable";
 import { SimulationControl } from "@/components/dashboard/SimulationControl";
 import { ChatWidget } from "@/components/chat/ChatWidget";

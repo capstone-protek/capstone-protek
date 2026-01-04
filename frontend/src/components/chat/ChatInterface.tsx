@@ -41,14 +41,13 @@ export function ChatInterface() {
   });
 
   const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // --- BARU: Save to LocalStorage ---
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      scrollRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
 
@@ -79,7 +78,7 @@ export function ChatInterface() {
 
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
-    setIsLoading(true);
+  };
 
     try {
       const data = await dashboardService.sendMessage(query);

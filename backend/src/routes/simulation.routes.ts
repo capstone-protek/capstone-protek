@@ -10,8 +10,8 @@ const router = Router();
 // POST /api/simulation/start
 router.post('/start', startSimulation);
 
-// GET /api/simulation/stop
-router.get('/stop', stopSimulation);
+// POST /api/simulation/stop
+router.post("/stop", stopSimulation);
 
 // GET /api/simulation/status
 router.get('/status', getSimulationStatus);

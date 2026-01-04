@@ -22,7 +22,7 @@ export interface PredictPayload {
 }
 
 // ==========================================================
-// 2. OUTPUT DATA (MATCHING POSTMAN IMAGE_B2FCDF)
+// 2. OUTPUT DATA (MATCHING POSTMAN)
 // ==========================================================
 
 export interface MLResponse {

@@ -18,12 +18,16 @@ interface SidebarProps {
   toggleSidebar: () => void;
 }
 
-const navigation = [
+interface SidebarProps {
+  isCollapsed: boolean;
+  toggleSidebar: () => void;
+}
+
+const mainNavigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Alerts", href: "/alerts", icon: AlertTriangle },
   { name: "Machines", href: "/machines", icon: Activity },
   { name: "Copilot", href: "/chat", icon: MessageSquare },
-  { name: "Settings", href: "/settings", icon: Settings },
 ];
 
 export function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {

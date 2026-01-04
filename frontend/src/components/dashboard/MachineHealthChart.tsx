@@ -222,3 +222,5 @@ export function MachineHealthChart() {
     </Card>
   );
 }
+
+export default MachineHealthChart;
